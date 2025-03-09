@@ -1,4 +1,4 @@
-#delete this later
+### delete this later
 make iso with `make iso`
 run iso with `qemu-system-i386 -cdrom tetros.iso`
 
