@@ -1,3 +1,9 @@
+#delete this later
+make iso with `make iso`
+run iso with `qemu-system-i386 -cdrom tetros.iso`
+
+
+
 # tetrOS
 
 tetrOS is a simple, bootable OS designed to run a game of Tetris.
