@@ -1485,16 +1485,15 @@ void keyboard_handler() {
     draw_grid();
     outb(0x20, 0x20);
 }
-
 void k_main() {
-    outb(0x3C6, 0xFF);
-    set_custom_palette();
-    disable_cursor();
-    reset();
-    draw_grid();
-    pic_remap();
-    k_install_idt();
+    outb(0x3C6, 0xFF);    
+    set_custom_palette();   
+    disable_cursor();   
+    reset();    
+    draw_grid();   
+    pic_remap();  
+    k_install_idt(); 
     init_timer();
-    asm volatile ("sti");
-    kernel_loop();
+    //asm volatile ("sti"); 
+    //kernel_loop();
 }
