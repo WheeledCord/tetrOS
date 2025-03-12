@@ -1,5 +1,6 @@
 #include "os_utils.h"
 #include "game_settings.h"
+#include "classes.h"
 #ifndef KERNEL_H
 #define KERNEL_H
 
@@ -21,40 +22,38 @@
 #define LIGHT_CYAN 0x0E
 #define LIGHT_BLUE CYAN
 #define LIGHT_PURPLE 0x0F
-
-// Booleans
-#define bool _Bool
-#define true 1
-#define false 0
+char colour_combo(char bg, char fg) {
+    return (char)((int)bg*16+(int)fg);
+}
 
 // Screen utilities
 void disable_cursor() {
     outb(0x3D4, 0x0A);
     outb(0x3D5, 0x20);
 }
-void set_palette_colour(int color_index, int rgb[3]) {
+void __set_palette_colour(int color_index, int rgb[3]) {
     outb(0x3C8, color_index); // Select the color index to modify
     outb(0x3C9, rgb[0] & 0x3F);    // Set red component (0-63)
     outb(0x3C9, rgb[1] & 0x3F);    // Set green component (0-63)
     outb(0x3C9, rgb[2] & 0x3F);    // Set blue component (0-63)
 }
 void set_palette() {
-    set_palette_colour(0, pallete[0]);
-    set_palette_colour(1, pallete[1]);
-    set_palette_colour(2, pallete[2]);
-    set_palette_colour(3, pallete[3]);
-    set_palette_colour(4, pallete[4]);
-    set_palette_colour(5, pallete[5]);
-    set_palette_colour(7, pallete[7]);
-    set_palette_colour(20, pallete[6]);
-    set_palette_colour(56, pallete[8]);
-    set_palette_colour(57, pallete[9]);
-    set_palette_colour(58, pallete[10]);
-    set_palette_colour(59, pallete[11]);
-    set_palette_colour(60, pallete[12]);
-    set_palette_colour(61, pallete[13]);
-    set_palette_colour(62, pallete[14]);
-    set_palette_colour(63, pallete[15]);
+    __set_palette_colour(0, pallete[0]);
+    __set_palette_colour(1, pallete[1]);
+    __set_palette_colour(2, pallete[2]);
+    __set_palette_colour(3, pallete[3]);
+    __set_palette_colour(4, pallete[4]);
+    __set_palette_colour(5, pallete[5]);
+    __set_palette_colour(7, pallete[7]);
+    __set_palette_colour(20, pallete[6]);
+    __set_palette_colour(56, pallete[8]);
+    __set_palette_colour(57, pallete[9]);
+    __set_palette_colour(58, pallete[10]);
+    __set_palette_colour(59, pallete[11]);
+    __set_palette_colour(60, pallete[12]);
+    __set_palette_colour(61, pallete[13]);
+    __set_palette_colour(62, pallete[14]);
+    __set_palette_colour(63, pallete[15]);
 }
 
 char screen_lines[2][25][80];
@@ -89,7 +88,7 @@ void print(char string[], char colour, unsigned int y, unsigned int x) {
         }
     }
 }
-char printc_switch(char c) {
+char __printc_switch(char c) {
     switch(c) {
         case '1': return GRAY; break;
         case '2': return WHITE; break;
@@ -124,9 +123,9 @@ void printc(char string[], char colours[], unsigned int y, unsigned int x) {
     }
     x = x-string_length;
     while (*colours) {
-        char colour = printc_switch(*colours++);
+        char colour = __printc_switch(*colours++);
         if (colour == ' ') {
-            colour = (printc_switch(*colours++)*16)+printc_switch(*colours++);
+            colour = (__printc_switch(*colours++)*16)+__printc_switch(*colours++);
         }
         if (colour == BLACK) {
             colour = WHITE;
