@@ -1,54 +1,138 @@
+#include "os_utils.h"
+#include "game_settings.h"
 #ifndef KERNEL_H
 #define KERNEL_H
 
-//vga text mode color attribute
+// Colors
 #define BLACK 0x00
 #define WHITE 0x01
 #define GRAY 0x02
-#define CYAN 0x03
-#define BLUE 0x04
-#define ORANGE 0x05
-#define YELLOW 0x06
-#define GREEN 0x07
-#define PURPLE 0x08
-#define RED 0x09
-#define LIGHT_CYAN 0x0A
-#define LIGHT_BLUE 0x03  // light blue = cyan
+#define RED 0x03
+#define ORANGE 0x04
+#define YELLOW 0x05
+#define GREEN 0x06
+#define CYAN 0x07
+#define BLUE 0x08
+#define PURPLE 0x09
+#define LIGHT_RED 0x0A
 #define LIGHT_ORANGE 0x0B
 #define LIGHT_YELLOW 0x0C
 #define LIGHT_GREEN 0x0D
-#define LIGHT_PURPLE 0x0E
-#define LIGHT_RED 0x0F
+#define LIGHT_CYAN 0x0E
+#define LIGHT_BLUE CYAN
+#define LIGHT_PURPLE 0x0F
 
-// booleans
+// Booleans
 #define bool _Bool
 #define true 1
 #define false 0
 
-//vga functions
-void k_clear_screen();
-unsigned int k_printf(char *message, unsigned int line);
-void disable_cursor();
+// Screen utilities
+void disable_cursor() {
+    outb(0x3D4, 0x0A);
+    outb(0x3D5, 0x20);
+}
+void set_palette_colour(int color_index, int rgb[3]) {
+    outb(0x3C8, color_index); // Select the color index to modify
+    outb(0x3C9, rgb[0] & 0x3F);    // Set red component (0-63)
+    outb(0x3C9, rgb[1] & 0x3F);    // Set green component (0-63)
+    outb(0x3C9, rgb[2] & 0x3F);    // Set blue component (0-63)
+}
+void set_palette() {
+    set_palette_colour(0, pallete[0]);
+    set_palette_colour(1, pallete[1]);
+    set_palette_colour(2, pallete[2]);
+    set_palette_colour(3, pallete[3]);
+    set_palette_colour(4, pallete[4]);
+    set_palette_colour(5, pallete[5]);
+    set_palette_colour(7, pallete[7]);
+    set_palette_colour(20, pallete[6]);
+    set_palette_colour(56, pallete[8]);
+    set_palette_colour(57, pallete[9]);
+    set_palette_colour(58, pallete[10]);
+    set_palette_colour(59, pallete[11]);
+    set_palette_colour(60, pallete[12]);
+    set_palette_colour(61, pallete[13]);
+    set_palette_colour(62, pallete[14]);
+    set_palette_colour(63, pallete[15]);
+}
 
-//utility functions
-void itoa(int value, char *str, int base);
-
-//io port functions
-void outb(unsigned short port, unsigned char data);
-unsigned char inb(unsigned short port);
-
-//pic and interrupt setup
-void pic_remap();
-void k_install_idt();
-void idt_load(unsigned int);
-
-//device driver initialization
-void init_timer();
-
-//kernel main function
-void k_main();
-
-//kernel draw grid func
-void draw_grid();
+char screen_lines[2][25][80];
+void clear_screen() {
+    for(unsigned int y = 0; y < 25; y++) {
+        for(unsigned int x = 0; x < 80; x++) {
+            screen_lines[0][y][x] = ' ';
+            screen_lines[1][y][x] = WHITE;
+        }
+    }
+}
+void screen_update() {
+    char *vidmem = (char *)0xB8000;
+    unsigned int i = 0;
+    for(unsigned int y = 0; y < 25; y++) {
+        for(unsigned int x = 0; x < 80; x++) {
+            vidmem[i++] = screen_lines[0][y][x];
+            vidmem[i++] = screen_lines[1][y][x];
+        }
+    }
+    clear_screen();
+}
+void print(char string[], char colour, unsigned int y, unsigned int x) {
+    while (*string) {
+        if (*string == '\n') {
+            y++;
+            x = 0;
+            string++;
+        } else {
+            screen_lines[0][y][x] = *string++;
+            screen_lines[1][y][x++] = colour;
+        }
+    }
+}
+char printc_switch(char c) {
+    switch(c) {
+        case '1': return GRAY; break;
+        case '2': return WHITE; break;
+        case '3': return RED; break;
+        case '4': return ORANGE; break;
+        case '5': return YELLOW; break;
+        case '6': return GREEN; break;
+        case '7': return CYAN; break;
+        case '8': return BLUE; break;
+        case '9': return PURPLE; break;
+        case 'A': return LIGHT_RED; break;
+        case 'B': return LIGHT_YELLOW; break;
+        case 'C': return LIGHT_GREEN; break;
+        case 'D': return LIGHT_CYAN; break;
+        case 'E': return LIGHT_BLUE; break;
+        case 'F': return LIGHT_PURPLE; break;
+        case '-': return ' '; break;
+        default: return BLACK; break;
+    }
+}
+void printc(char string[], char colours[], unsigned int y, unsigned int x) {
+    unsigned int string_length = 0;
+    while (*string) {
+        if (*string == '\n') {
+            y++;
+            x = 0;
+            string++;
+        } else {
+            screen_lines[0][y][x++] = *string++;
+        }
+        string_length++;
+    }
+    x = x-string_length;
+    while (*colours) {
+        char colour = printc_switch(*colours++);
+        if (colour == ' ') {
+            colour = (printc_switch(*colours++)*16)+printc_switch(*colours++);
+        }
+        if (colour == BLACK) {
+            colour = WHITE;
+        }
+        screen_lines[1][y][x++] = colour;
+    }
+}
 
 #endif

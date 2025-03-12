@@ -6,16 +6,16 @@ section .text
     dd -(0x1BADB002 + 0x00)  ;checksum
 
 global start
-extern kernel_init
+extern k_main
 
 ;declare external c interrupt handlers
-extern tick_handler
-extern key_handler
+extern timer_handler
+extern keyboard_handler
 
 start:
     cli             ;disable interrupts
-    call kernel_init     ;call the kernel_init function
-    hlt             ;halt if kernel_init ever returns
+    call k_main     ;call the kernel main function
+    hlt             ;halt if k_main ever returns
 
 ;idt loading routine
 global idt_load
@@ -24,18 +24,18 @@ idt_load:
     lidt [eax]        ;load idt register
     ret
 
-;tick interrupt stub
-global tick_handler_stub
-tick_handler_stub:
+;timer interrupt stub
+global timer_handler_stub
+timer_handler_stub:
     pusha                  ;save registers
-    call tick_handler     ;call c tick_handler
+    call timer_handler     ;call c timer handler
     popa                   ;restore registers
     iret                   ;return from interrupt
 
-;key interrupt stub
-global key_handler_stub
-key_handler_stub:
+;keyboard interrupt stub
+global keyboard_handler_stub
+keyboard_handler_stub:
     pusha                   ;save registers
-    call key_handler   ;call c key_handler
+    call keyboard_handler   ;call c keyboard handler
     popa                    ;restore registers
     iret                    ;return from interrupt
