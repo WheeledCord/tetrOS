@@ -124,7 +124,7 @@ char __printc_switch(char c) {
         default: return BLACK; break;
     }
 }
-void printc(char string[], char colours[], unsigned int y, unsigned int x) {
+void printc(char *string, char *colours, unsigned int y, unsigned int x) {
     unsigned int string_length = 0;
     while (*string) {
         if (*string == '\n') {

@@ -336,9 +336,9 @@
         }
         if (collision_bug_occured) {
             if (ascii_mode) {
-                printc(collision_bug_indicator_ascii,collision_bug_indicator_ascii_colour,collision_bug_indicator_ascii_pos[1],collision_bug_indicator_ascii_pos[0]);
+                print(collision_bug_indicator_ascii,collision_bug_indicator_ascii_colour,collision_bug_indicator_ascii_pos[1],collision_bug_indicator_ascii_pos[0]);
             } else {
-                printc(collision_bug_indicator,collision_bug_indicator_colour,collision_bug_indicator_pos[1],collision_bug_indicator_pos[0]);
+                print(collision_bug_indicator,collision_bug_indicator_colour,collision_bug_indicator_pos[1],collision_bug_indicator_pos[0]);
             }
         }
     }
