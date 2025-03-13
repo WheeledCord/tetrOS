@@ -92,6 +92,8 @@ unsigned int spawn_x = ((int)((grid_width-1)/2));
 unsigned int spawn_y = 1;
 unsigned int spawn_rot = 0;
 float start_gravity = 14.4;
-float lcp_duration = 1;
+
+unsigned int lc_flashes = 3;
+float lc_flash_duration = 0.25;
 
 #endif

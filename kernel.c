@@ -5,7 +5,8 @@
 
 // Ticks
     unsigned int tick = 0;
-    unsigned int lcp_tick = 0;
+    unsigned int lc_tick = 0;
+    unsigned int anti_gravity_tick = 0;
 
 // Game Variables
     int current_shape_x,current_shape_y,current_shape_rot;
@@ -14,9 +15,11 @@
     enum Shape held_shape;
     enum Shape current_shape;
 
+    unsigned int score = 0, lvl = 0, total_lines_cleared = 0;
     float gravity;
 
     bool collision_bug_occured = false;
+    bool game_over = false;
 
 // Game Settings
     bool ascii_mode = default_ascii_mode; 
@@ -67,35 +70,18 @@
         }
     }
 
-    bool illegalities[5];
-    bool any_illegality = false;
-    void calc_illegality(enum Shape shape, int rot, int cx, int cy) {
-        // Calculate the relative points
-        calc_shape_points(shape,rot);
-        for (unsigned int p = 0; p < 4; p++) {
-            // Get tile x and y
-            int x = cx+shape_points[p][0];
-            int y = cy+shape_points[p][1];
-            illegalities[0] = x<0; // piece is out of bound (left)
-            illegalities[1] = x>=grid_width; // piece is out of bound (right)
-            illegalities[2] = y<0; // piece is out of bound (up)
-            illegalities[3] = y>=grid_height; // piece is out of bound (down)
-            illegalities[4] = tilemap[y][x] != 0; // piece is overlapping a stamped piece
-            any_illegality = false;
-            if (x<0 || x>=grid_width || y<0 || y>=grid_height || tilemap[y][x] != 0) {
-                any_illegality = true;
-            }
-        }
-    }
-
 // Drawing to Screen
     #define top_margin 3
     #define left_margin (40-grid_width-1)
-    #define shapes_middle_margin ((top_margin+grid_height)-8+1)
+    #define shapes_middle_margin ((top_margin+grid_height)-8)
     #define shapes_left_margin (80-left_margin/2-5)
+    // #define stats_middle_margin ((top_margin+grid_height)-8)
+    #define stats_left_margin (left_margin/2-5)
+    #define stats_width 7
+    #define stats_gap 4
 
-    void draw_grid() {
-        // Get strings for grid characters, from either grid_chars_ascii if in ascii mode, or grid_chars if not.
+    void draw_boxes_and_grid() {
+        // Get strings for grid characters, from either grid_chars_ascii if in ascii mode, or grid_chars if not
         char chars[11][2];
         for (unsigned int i = 0; i < 11; i++) {
             if (ascii_mode) {
@@ -114,7 +100,7 @@
             }
             print(chars[4],WHITE,top_margin,left_margin+x++); // top right corner
             // Draw the left and right edges, and the grid
-            for(unsigned int y = 1; y <= grid_height; y++) {
+            for (unsigned int y = 1; y <= grid_height; y++) {
                 x = 0;
                 print(chars[5],WHITE,top_margin+y,left_margin+x++); // left edge
                 for (unsigned int i = 0; i < grid_width; i++) {
@@ -125,48 +111,48 @@
             }
             // Draw the bottom edge
             x = 0;
-            print(chars[6],WHITE,top_margin+grid_height,left_margin+x++); // bottom left corner
+            print(chars[6],WHITE,top_margin+grid_height+1,left_margin+x++); // bottom left corner
             for (unsigned int i = 0; i < grid_width*2; i++) {
-                print(chars[7],WHITE,top_margin+grid_height,left_margin+x++); // bottom edge
+                print(chars[7],WHITE,top_margin+grid_height+1,left_margin+x++); // bottom edge
             }
-            print(chars[8],WHITE,top_margin+grid_height,left_margin+x++); // bottom right corner
+            print(chars[8],WHITE,top_margin+grid_height+1,left_margin+x++); // bottom right corner
 
         // Draw the next shape box
             // Draw the top edge
             x = 0;
-            print(chars[2],WHITE,top_margin,shapes_left_margin+x++); // top left corner
+            print(chars[2],WHITE,top_margin+2,shapes_left_margin+x++); // top left corner
             for (unsigned int i = 0; i < 8; i++) {
-                print(chars[3],WHITE,top_margin,shapes_left_margin+x++); // top edge
+                print(chars[3],WHITE,top_margin+2,shapes_left_margin+x++); // top edge
             }
-            print(chars[4],WHITE,top_margin,shapes_left_margin+x++); // top right corner
+            print(chars[4],WHITE,top_margin+2,shapes_left_margin+x++); // top right corner
             // Draw the left and right edges, and the "NEXT" Label
-            print(chars[5],WHITE,top_margin+1,shapes_left_margin); // left edge
-            print("  NEXT: ",WHITE,top_margin+1,shapes_left_margin+1); // "NEXT" label
-            print(chars[5],WHITE,top_margin+1,shapes_left_margin+1+8); // right edge
+            print(chars[5],WHITE,top_margin+2+1,shapes_left_margin); // left edge
+            print("  NEXT: ",WHITE,top_margin+2+1,shapes_left_margin+1); // "NEXT" label
+            print(chars[5],WHITE,top_margin+2+1,shapes_left_margin+1+8); // right edge
             // Draw the left and right joints, and the seperating line
             x = 0;
-            print(chars[9],WHITE,top_margin+2,shapes_left_margin+x++); // left joint
+            print(chars[9],WHITE,top_margin+2+2,shapes_left_margin+x++); // left joint
             for (unsigned int i = 0; i < 8; i++) {
-                print(chars[7],WHITE,top_margin+2,shapes_left_margin+x++); // seperating line
+                print(chars[7],WHITE,top_margin+2+2,shapes_left_margin+x++); // seperating line
             }
-            print(chars[10],WHITE,top_margin+2,shapes_left_margin+x++); // right joint
+            print(chars[10],WHITE,top_margin+2+2,shapes_left_margin+x++); // right joint
             // Draw the left and right edges, and the space
-            for(unsigned int y = 1; y <= 4; y++) {
+            for (unsigned int y = 1; y <= 4; y++) {
                 x = 0;
-                print(chars[5],WHITE,top_margin+2+y,shapes_left_margin+x++); // left edge
+                print(chars[5],WHITE,top_margin+2+2+y,shapes_left_margin+x++); // left edge
                 for (unsigned int i = 0; i < 4; i++) {
-                    print("  ",GRAY,top_margin+2+y,shapes_left_margin+x++); // space
+                    print("  ",GRAY,top_margin+2+2+y,shapes_left_margin+x++); // space
                     x++;
                 }
-                print(chars[5],WHITE,top_margin+2+y,shapes_left_margin+x++); // right edge
+                print(chars[5],WHITE,top_margin+2+2+y,shapes_left_margin+x++); // right edge
             }
             // Draw the bottom edge
             x = 0;
-            print(chars[6],WHITE,top_margin+2+5,shapes_left_margin+x++); // bottom left corner
+            print(chars[6],WHITE,top_margin+2+2+5,shapes_left_margin+x++); // bottom left corner
             for (unsigned int i = 0; i < 8; i++) {
-                print(chars[7],WHITE,top_margin+2+5,shapes_left_margin+x++); // bottom edge
+                print(chars[7],WHITE,top_margin+2+2+5,shapes_left_margin+x++); // bottom edge
             }
-            print(chars[8],WHITE,top_margin+2+5,shapes_left_margin+x++); // bottom right corner
+            print(chars[8],WHITE,top_margin+2+2+5,shapes_left_margin+x++); // bottom right corner
 
         // Draw the held shape box
             // Draw the top edge
@@ -188,7 +174,7 @@
             }
             print(chars[10],WHITE,shapes_middle_margin+2,shapes_left_margin+x++); // right joint
             // Draw the left and right edges, and the space
-            for(unsigned int y = 1; y <= 4; y++) {
+            for (unsigned int y = 1; y <= 4; y++) {
                 x = 0;
                 print(chars[5],WHITE,shapes_middle_margin+2+y,shapes_left_margin+x++); // left edge
                 for (unsigned int i = 0; i < 4; i++) {
@@ -204,40 +190,111 @@
                 print(chars[7],WHITE,shapes_middle_margin+2+5,shapes_left_margin+x++); // bottom edge
             }
             print(chars[8],WHITE,shapes_middle_margin+2+5,shapes_left_margin+x++); // bottom right corner
+        
+        // Draw the lvl stats box
+            // Draw the top edge
+            x = 0;
+            print(chars[2],WHITE,top_margin+2,stats_left_margin+x++); // top left corner
+            for (unsigned int i = 0; i < stats_width; i++) {
+                print(chars[3],WHITE,top_margin+2,stats_left_margin+x++); // top edge
+            }
+            print(chars[4],WHITE,top_margin+2,stats_left_margin+x++); // top right corner
+            // Draw the left and right edges, and the "LVL" Label
+            print(chars[5],WHITE,top_margin+2+1,stats_left_margin); // left edge
+            print("  LVL: ",WHITE,top_margin+2+1,stats_left_margin+1); // "LVL" label
+            print(chars[5],WHITE,top_margin+2+1,stats_left_margin+1+stats_width); // right edge
+            // Draw the left and right joints, and the seperating line
+            x = 0;
+            print(chars[9],WHITE,top_margin+2+2,stats_left_margin+x++); // left joint
+            for (unsigned int i = 0; i < stats_width; i++) {
+                print(chars[7],WHITE,top_margin+2+2,stats_left_margin+x++); // seperating line
+            }
+            print(chars[10],WHITE,top_margin+2+2,stats_left_margin+x++); // right joint
+            // Draw the left and right edges, and the space
+            x = 0;
+            print(chars[5],WHITE,top_margin+2+2+1,stats_left_margin+x++); // left edge
+            for (unsigned int i = 0; i < stats_width; i++) {
+                print(" ",GRAY,top_margin+2+2+1,stats_left_margin+x++); // space
+            }
+            print(chars[5],WHITE,top_margin+2+2+1,stats_left_margin+x++); // right edge
+            // Draw the bottom edge
+            x = 0;
+            print(chars[6],WHITE,top_margin+2+2+2,stats_left_margin+x++); // bottom left corner
+            for (unsigned int i = 0; i < stats_width; i++) {
+                print(chars[7],WHITE,top_margin+2+2+2,stats_left_margin+x++); // bottom edge
+            }
+            print(chars[8],WHITE,top_margin+2+2+2,stats_left_margin+x++); // bottom right corner
+
+        // Draw the lines cleared stats box
+            // Draw the top edge
+            x = 0;
+            print(chars[2],WHITE,top_margin+2+stats_gap+2,stats_left_margin+x++); // top left corner
+            for (unsigned int i = 0; i < stats_width; i++) {
+                print(chars[3],WHITE,top_margin+2+stats_gap+2,stats_left_margin+x++); // top edge
+            }
+            print(chars[4],WHITE,top_margin+2+stats_gap+2,stats_left_margin+x++); // top right corner
+            // Draw the left and right edges, and the "LVL" Label
+            print(chars[5],WHITE,top_margin+2+stats_gap+2+1,stats_left_margin); // left edge
+            print(" LINES:",WHITE,top_margin+2+stats_gap+2+1,stats_left_margin+1); // "LVL" label
+            print(chars[5],WHITE,top_margin+2+stats_gap+2+1,stats_left_margin+1+stats_width); // right edge
+            // Draw the left and right joints, and the seperating line
+            x = 0;
+            print(chars[9],WHITE,top_margin+2+stats_gap+2+2,stats_left_margin+x++); // left joint
+            for (unsigned int i = 0; i < stats_width; i++) {
+                print(chars[7],WHITE,top_margin+2+stats_gap+2+2,stats_left_margin+x++); // seperating line
+            }
+            print(chars[10],WHITE,top_margin+2+stats_gap+2+2,stats_left_margin+x++); // right joint
+            // Draw the left and right edges, and the space
+            x = 0;
+            print(chars[5],WHITE,top_margin+2+stats_gap+2+2+1,stats_left_margin+x++); // left edge
+            for (unsigned int i = 0; i < stats_width; i++) {
+                print(" ",GRAY,top_margin+2+stats_gap+2+2+1,stats_left_margin+x++); // space
+            }
+            print(chars[5],WHITE,top_margin+2+stats_gap+2+2+1,stats_left_margin+x++); // right edge
+            // Draw the bottom edge
+            x = 0;
+            print(chars[6],WHITE,top_margin+2+stats_gap+2+2+2,stats_left_margin+x++); // bottom left corner
+            for (unsigned int i = 0; i < stats_width; i++) {
+                print(chars[7],WHITE,top_margin+2+stats_gap+2+2+2,stats_left_margin+x++); // bottom edge
+            }
+            print(chars[8],WHITE,top_margin+2+stats_gap+2+2+2,stats_left_margin+x++); // bottom right corner
     }
 
     void draw_current_shape() {
-        // Calculate the relative points
-        calc_shape_points(current_shape,current_shape_rot);
-        for(unsigned int p = 0; p < 4; p++) {
-            // Select shape colour
-            char bg,fg;
-            switch (current_shape) {
-                case o: bg = YELLOW; fg = LIGHT_YELLOW; break;
-                case i: bg = CYAN; fg = LIGHT_CYAN; break;
-                case l: bg = GREEN; fg = LIGHT_GREEN; break;
-                case j: bg = RED; fg = LIGHT_RED; break;
-                case s: bg = ORANGE; fg = LIGHT_ORANGE; break;
-                case z: bg = BLUE; fg = LIGHT_BLUE; break;
-                case t: bg = PURPLE; fg = LIGHT_PURPLE; break;
-                default: bg = GRAY; fg = WHITE; break;
+        // Don't draw anything if clearing line
+        if (lc_tick == 0) {
+            // Calculate the relative points
+            calc_shape_points(current_shape,current_shape_rot);
+            for (unsigned int p = 0; p < 4; p++) {
+                // Select shape colour
+                char bg,fg;
+                switch (current_shape) {
+                    case o: bg = YELLOW; fg = LIGHT_YELLOW; break;
+                    case i: bg = CYAN; fg = LIGHT_CYAN; break;
+                    case l: bg = GREEN; fg = LIGHT_GREEN; break;
+                    case j: bg = RED; fg = LIGHT_RED; break;
+                    case s: bg = ORANGE; fg = LIGHT_ORANGE; break;
+                    case z: bg = BLUE; fg = LIGHT_BLUE; break;
+                    case t: bg = PURPLE; fg = LIGHT_PURPLE; break;
+                    default: bg = GRAY; fg = WHITE; break;
+                }
+                // If in ascii mode, only colour foreground, else colour both background and foreground
+                char colour;
+                if (ascii_mode) {
+                    colour = bg;
+                } else {
+                    colour = colour_combo(bg,fg);
+                }
+                // Plot the point onto the grid
+                print("[]",colour,top_margin+1+current_shape_y+shape_points[p][1],left_margin+1+2*(current_shape_x+shape_points[p][0]));
             }
-            // If in ascii mode, only colour foreground, else colour both background and foreground
-            char colour;
-            if (ascii_mode) {
-                colour = bg;
-            } else {
-                colour = colour_combo(bg,fg);
-            }
-            // Plot the point onto the grid
-            print("[]",colour,top_margin+1+current_shape_y+shape_points[p][1],left_margin+1+2*(current_shape_x+shape_points[p][0]));
         }
     }
 
     void draw_next_shape() {
         // Calculate the relative points for the default rotation
         calc_shape_points(next_shape,0);
-        for(unsigned int p = 0; p < 4; p++) {
+        for (unsigned int p = 0; p < 4; p++) {
             // Select shape colour and offset
             char bg,fg;
             int x_offset = 0, y_offset = 0;
@@ -259,7 +316,7 @@
                 colour = colour_combo(bg,fg);
             }
             // Plot the point onto the indicator space grid
-            print("[]",colour,top_margin+3+shape_points[p][1]+y_offset,shapes_left_margin+1+2*(shape_points[p][0])+x_offset);
+            print("[]",colour,top_margin+2+3+shape_points[p][1]+y_offset,shapes_left_margin+1+2*(shape_points[p][0])+x_offset);
         }
     }
 
@@ -268,7 +325,7 @@
         if (held_shape != unset) {
             // Calculate the relative points for the default rotation
             calc_shape_points(held_shape,0);
-            for(unsigned int p = 0; p < 4; p++) {
+            for (unsigned int p = 0; p < 4; p++) {
                 // Select shape colour and offset
                 char bg,fg;
                 int x_offset = 0, y_offset = 0;
@@ -345,9 +402,9 @@
 
 // Bag
     void refil_bag() {
-        // Placeholder code, replace once randomness is sorted.
+        // Placeholder code, replace once randomness is sorted
         unsigned int new_bag[7] = {1,2,3,4,5,6,7};
-        for(unsigned int i = 0; i < 7; i++) {
+        for (unsigned int i = 0; i < 7; i++) {
             bag[i] = new_bag[i];
         }
     }
@@ -355,7 +412,7 @@
         // Test if bag is empty
         unsigned int i;
         bool bag_empty = true;
-        for(i = 0; i < 7; i++) {
+        for (i = 0; i < 7; i++) {
             if (bag[i] != 0) {
                 bag_empty = false;
                 break;
@@ -366,7 +423,7 @@
             refil_bag();
         }
         // Find the first shape left in the bag, remove it from the bag, and return it
-        for(i = 0; i < 7; i++) {
+        for (i = 0; i < 7; i++) {
             if (bag[i] != 0) {
                 enum Shape selected;
                 switch(bag[i]) {
@@ -384,23 +441,116 @@
         }
     }
 
-    // Game logic functions
+// Game logic functions
+bool shape_illegalities[5];
+bool shape_illegal = false;
+void calc_shape_illegality(enum Shape shape, int rot, int cx, int cy) {
+    // Calculate the relative points
+    calc_shape_points(shape,rot);
+    for (unsigned int i = 0; i < 5; i++) {
+        shape_illegalities[i] = false;
+    }
+    for (unsigned int p = 0; p < 4; p++) {
+        // Get tile x and y
+        int x = cx+shape_points[p][0];
+        int y = cy+shape_points[p][1];
+        if (!shape_illegalities[0]) {
+            shape_illegalities[0] = x < 0; // point out of bound (left)
+        }
+        if (!shape_illegalities[1]) {
+            shape_illegalities[1] = x >= grid_width; // point out of bound (right)
+        }
+        if (!shape_illegalities[2]) {
+            shape_illegalities[2] = y < 0; // point out of bound (up)
+        }
+        if (!shape_illegalities[3]) {
+            shape_illegalities[3] = y >= grid_height; // point out of bound (down)
+        }
+        if (!shape_illegalities[4]) {
+            shape_illegalities[4] = tilemap[y][x] != 0; // point overlapping stamped piece
+        }
+    }
+    shape_illegal = false;
+    for (unsigned int i = 0; i < 5; i++) {
+        if (shape_illegalities[i]) {
+            shape_illegal = true;
+            break;
+        }
+    }
+}
+
+bool lines_cleared[grid_height];
+unsigned int check_line_clears() {
+    unsigned int lines_cleared_amount = 0;
+    for (unsigned int y = 0; y < grid_height; y++) {
+        // If this line has any gaps, it isn't full
+        bool line_full = true;
+        for (unsigned int x = 0; x < grid_width; x++) {
+            if (tilemap[y][x] == 0) {
+                line_full = false;
+                break;
+            }
+        }
+        // Add result to the output array and increase cleared lines counter
+        lines_cleared[y] = line_full;
+        if (line_full) {
+            lines_cleared_amount++;
+        }
+    }
+    if (lines_cleared_amount > 0) {
+        // Start flashing lines
+        lc_tick = 2*lc_flashes;
+        // Update total lines cleared counter
+        total_lines_cleared += lines_cleared_amount;
+        unsigned int old_level = lvl;
+        // Update level
+        lvl = round(total_lines_cleared / 10);
+        if (lvl != old_level) {
+            // Update gravity
+            if (lvl < 9) {
+                gravity -= 1.5;
+            } else if (lvl == 9) {
+                gravity -= 0.6;
+            } else if (lvl == 10 || lvl == 13 || lvl == 16 || lvl == 19 || lvl == 29) {
+                gravity -= 0.3;
+            }
+        }
+        // Update score
+        score += round(lines_cleared_amount / 4)*(1200*(lvl+1)); // tetrises
+        score += round((lines_cleared_amount % 4) / 3)*(300*(lvl+1)); // triples
+        score += round(((lines_cleared_amount % 4) % 3) / 2)*(100*(lvl+1)); // doubles
+        score += (((lines_cleared_amount % 4) % 3) % 2)*(40*(lvl+1)); // singles
+    }
+    return lines_cleared_amount;
+}
+
 void stamp() {
     // Calculate the relative points
     calc_shape_points(current_shape,current_shape_rot);
-    for(unsigned int p = 0; p < 4; p++) {
+    for (unsigned int p = 0; p < 4; p++) {
         // Plot the point onto the tilemap
         tilemap[current_shape_y+shape_points[p][1]][current_shape_x+shape_points[p][0]] = ((int)current_shape)+1;
     }
-    // Get new shape
-    current_shape_x = spawn_x;
-    current_shape_y = spawn_y;
-    current_shape_rot = spawn_rot;
-    current_shape = next_shape;
-    next_shape = take_from_bag();
+    // Test for line clears
+    unsigned int lines_cleared_amount = check_line_clears();
+    // Get new shape if no lines cleared, if there is, the new shape will be assigned once the lines stop flashing
+    if (lines_cleared_amount == 0) {
+        current_shape_x = spawn_x;
+        current_shape_y = spawn_y;
+        current_shape_rot = spawn_rot;
+        current_shape = next_shape;
+        next_shape = take_from_bag();
+        calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
+        if (shape_illegal) {
+            game_over = true;
+        }
+    }
 }
 
 void reset() {
+    total_lines_cleared = 0;
+    score = 0;
+    lvl = 0;
     collision_bug_occured = false;
     clear_tilemap();
     current_shape_x = spawn_x;
@@ -413,28 +563,18 @@ void reset() {
     held_shape = unset;
 }
 
-
 void main_loop() {
     // Game logic
-    calc_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
-    if (any_illegality) {
-        collision_bug_occured = true;
+    if (lc_tick == 0) {
+        calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
+        if (shape_illegal) {
+            collision_bug_occured = true;
+        }
     }
-
-    print("rot: ",WHITE,5,0);printi(current_shape_rot,WHITE,5,5);
-    print("x: ",WHITE,6,0);printi(current_shape_x,WHITE,6,3);
-    print("y: ",WHITE,7,0);printi(current_shape_y,WHITE,7,3);
-    print("shape: ",WHITE,8,0);printi(current_shape,WHITE,8,7);
-
-    printi(illegalities[0],WHITE,10,0);
-    printi(illegalities[1],WHITE,11,0);
-    printi(illegalities[2],WHITE,12,0);
-    printi(illegalities[3],WHITE,13,0);
-    printi(illegalities[4],WHITE,14,0);
 
     // Display
     print("Welcome to TetrOS!",WHITE,1,40-9);
-    draw_grid();
+    draw_boxes_and_grid();
     draw_stamped_shapes();
     draw_current_shape();
     draw_next_shape();
@@ -444,12 +584,77 @@ void main_loop() {
 
 void tick_handler() {
     tick++;
+    // Handle ticks (e.g. gravity or line clear flashing) if not paused
     if (!paused) {
-        if (lcp_tick > 0 && tick % round(18/lcp_duration) == 0) {
-            lcp_tick--;
+        // Handle line clear flashing
+        // The second condition of this if statement should be replaced, as currently it waits for the next tick that matches, creating inconsistency in when the flashes start
+        if (lc_tick > 0 && tick % round(18*lc_flash_duration) == 0) {
+            for (unsigned int y = 0; y < grid_height; y++) {
+                // Only adjust if the line was cleared
+                if (lines_cleared[y]) {
+                    for (unsigned int x = 0; x < grid_width; x++) {
+                        if (lc_tick % 2 == 0) {
+                            // flash white
+                            tilemap[y][x] = -1;
+                        } else {
+                            // flash black
+                            tilemap[y][x] = 0;
+                        }
+                    }
+                }
+            }
+            // Go to next state (flash white / black / finished)
+            lc_tick--;
+            // Prepare to continue gameplay
+            if (lc_tick == 0) {
+                // Make lines with no support fall
+                for (unsigned int y = 0; y < grid_height; y++) {
+                    if (lines_cleared[y]) {
+                        for (unsigned int y2 = y; y2 > 0; y2--) {
+                            for (unsigned int x = 0; x < grid_width; x++) {
+                                tilemap[y2][x] = tilemap[y2-1][x];
+                            }
+                        }
+                        // Un-mark line as cleared
+                        lines_cleared[y] = false;
+                    }
+                }
+                // Pause gravity of current shape
+                anti_gravity_tick = round(gravity);
+                // Spawn the new shape
+                current_shape_x = spawn_x;
+                current_shape_y = spawn_y;
+                current_shape_rot = spawn_rot;
+                current_shape = next_shape;
+                next_shape = take_from_bag();
+                // If the shape spawns illegaly, end the game
+                calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
+                if (shape_illegal) {
+                    game_over = true;
+                }
+            }
+        }
+        // Handle gravity if not flashing line clears
+        if (lc_tick == 0) {
+            // Don't fall if just soft dropped
+            if (anti_gravity_tick > 0) {
+                anti_gravity_tick--;
+            }
+            // The second condition of this if statement should be replaced, as currently it waits for the next tick that matches, creating inconsistency in anti-gravity length
+            if (anti_gravity_tick == 0 && tick % round(gravity) == 0) {
+                // Lower the shape
+                current_shape_y++;
+                // If the shape goes out of bounds, move it back in
+                calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
+                if (shape_illegal) {
+                    current_shape_y--;
+                    stamp();
+                }
+            }
         }
     }
 
+    // Run the main loop, and draw the screen
     main_loop();
     screen_update();
 
@@ -458,66 +663,75 @@ void tick_handler() {
 void key_handler() {
     // Get keycode
     unsigned char keycode = inb(0x60);
-    // Don't allow input if paused, or lines are clearing, and ignore the "key up" keycode.
-    if (!paused && keycode != 224) {
+    // Don't allow input if paused, or lines are clearing, and ignore the "key up" keycode
+    if (!paused && lc_tick == 0 && keycode != 224) {
         switch(keycode) {
             case 0x4B: // left arrow (move left)
-                if (current_shape_x > 0) {
-                    current_shape_x --;
-                    calc_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
-                    if (any_illegality) {
-                        current_shape_x ++;
-                    }
+                // Move shape left
+                current_shape_x--;
+                // If the shape goes out of bounds, move it back in
+                calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
+                if (shape_illegal) {
+                    current_shape_x++;
                 }
                 break;
             case 0x4D: // right arrow (move right)
-                if (current_shape_x < grid_width-1) {
-                    current_shape_x ++;
-                    calc_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
-                    if (any_illegality) {
-                        current_shape_x --;
-                    }
+                // Move shape right
+                current_shape_x++;
+                // If the shape goes out of bounds, move it back in
+                calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
+                if (shape_illegal) {
+                    current_shape_x--;
                 }
                 break;
             case 0x50: // down arrow (soft drop)
-                if (current_shape_y < grid_height-2) {
-                    current_shape_y ++;
-                    calc_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
-                    if (any_illegality) {
-                        current_shape_y --;
-                    }
+                // Move shape down
+                current_shape_y++;
+                // If the shape goes out of bounds, move it back in
+                calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
+                if (shape_illegal) {
+                    current_shape_y--;
+                } else {
+                    anti_gravity_tick = round(gravity);
                 }
                 break;
             case 0x39: // space (hard drop)
                 break;
             case 0x48: // up arrow (rotate right)
             case 0x2D: // x (rotate right)
+                // Rotate shape right
                 current_shape_rot++;
+                // Clip rotation to range 1-4
                 if (current_shape_rot >= 4) {
                     current_shape_rot = 0;
                 }
-                calc_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
-                if (any_illegality) {
-                    current_shape_rot --;
+                // If the shape goes out of bounds, move it back in
+                calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
+                if (shape_illegal) {
+                    current_shape_rot--;
                     if (current_shape_rot < 0) {
                         current_shape_rot = 3;
                     }
                 }
                 break;
             case 0x2C: // z (rotate left)
+                // Rotate shape left
                 current_shape_rot--;
+                // Clip rotation to range 1-4
                 if (current_shape_rot < 0) {
                     current_shape_rot = 3;
                 }
-                calc_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
-                if (any_illegality) {
-                    current_shape_rot ++;
+                // If the shape goes out of bounds, move it back in
+                calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
+                if (shape_illegal) {
+                    current_shape_rot++;
                     if (current_shape_rot >= 4) {
                         current_shape_rot = 0;
                     }
                 }
                 break;
             case 0x2E: // c (hold)
+                // If no shape is currently held, hold the current shape and generate a new next shape, else swap the held shape and current shape
                 if (held_shape == unset) {
                     held_shape = current_shape;
                     current_shape = next_shape;
@@ -527,18 +741,18 @@ void key_handler() {
                     current_shape = held_shape;
                     held_shape = temp_shape;
                 }
+                // Set the spawn position and rotation of the new current shape
+                current_shape_x = spawn_x;
+                current_shape_y = spawn_y;
+                current_shape_rot = 0;
+                // If the shape spawns illegaly, end the game
+                calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
+                if (shape_illegal) {
+                    game_over = true;
+                }
                 break;
             case 0x13: // r (reset)
                 reset();
-                break;
-            case 0x3C: // f2 (debug switch shape)
-                current_shape = next_shape;
-                next_shape = take_from_bag();
-                break;
-            case 0x3D: // f3 (debug stamp)
-                stamp();
-                break;
-            default:
                 break;
         }
     }
@@ -553,6 +767,7 @@ void key_handler() {
 }
 
 void kernel_init() {
+    // OS Stuff
     outb(0x3C6, 0xFF);
 
     // Set up display
