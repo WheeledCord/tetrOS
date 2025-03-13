@@ -34,11 +34,11 @@ unsigned int paused_indicator_ascii_pos[2] = {1,1};
 
 char collision_bug_indicator[32] = "There has been a collision bug!";
 char collision_bug_indicator_colour = 0x03;
-unsigned int collision_bug_indicator_pos[2] = {1,3};
+unsigned int collision_bug_indicator_pos[2] = {1,2};
 
 char collision_bug_indicator_ascii[32] = "There has been a collision bug!";
 char collision_bug_indicator_ascii_colour = 0x03;
-unsigned int collision_bug_indicator_ascii_pos[2] = {1,3};
+unsigned int collision_bug_indicator_ascii_pos[2] = {1,2};
 
 int shape_o[4][4][4] = {
     { {1,1,0,0}, {2,1,0,0}, {0,0,0,0}, {0,0,0,0} },

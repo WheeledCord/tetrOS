@@ -8,7 +8,7 @@
     unsigned int lcp_tick = 0;
 
 // Game Variables
-    unsigned int current_shape_x,current_shape_y,current_shape_rot;
+    int current_shape_x,current_shape_y,current_shape_rot;
     unsigned int bag[7];
     enum Shape next_shape;
     enum Shape held_shape;
@@ -34,7 +34,7 @@
 
 // Points
     int shape_points[4][2];
-    void calc_shape_points(enum Shape shape, unsigned int rot) {
+    void calc_shape_points(enum Shape shape, int rot) {
         // Select which rotation to take points from
         int (*r)[4];
         switch(shape) {
@@ -69,13 +69,13 @@
 
     bool illegalities[5];
     bool any_illegality = false;
-    unsigned int calc_illegality(enum Shape shape, unsigned int rot, unsigned int cx, unsigned int cy) {
+    void calc_illegality(enum Shape shape, int rot, int cx, int cy) {
         // Calculate the relative points
         calc_shape_points(shape,rot);
-        for (unsigned int i = 0; i < 4; i++) {
+        for (unsigned int p = 0; p < 4; p++) {
             // Get tile x and y
-            int x = shape_points[i][0]+cx;
-            int y = shape_points[i][1]+cy;
+            int x = cx+shape_points[p][0];
+            int y = cy+shape_points[p][1];
             illegalities[0] = x<0; // piece is out of bound (left)
             illegalities[1] = x>=grid_width; // piece is out of bound (right)
             illegalities[2] = y<0; // piece is out of bound (up)
@@ -421,6 +421,17 @@ void main_loop() {
         collision_bug_occured = true;
     }
 
+    print("rot: ",WHITE,5,0);printi(current_shape_rot,WHITE,5,5);
+    print("x: ",WHITE,6,0);printi(current_shape_x,WHITE,6,3);
+    print("y: ",WHITE,7,0);printi(current_shape_y,WHITE,7,3);
+    print("shape: ",WHITE,8,0);printi(current_shape,WHITE,8,7);
+
+    printi(illegalities[0],WHITE,10,0);
+    printi(illegalities[1],WHITE,11,0);
+    printi(illegalities[2],WHITE,12,0);
+    printi(illegalities[3],WHITE,13,0);
+    printi(illegalities[4],WHITE,14,0);
+
     // Display
     print("Welcome to TetrOS!",WHITE,1,40-9);
     draw_grid();
@@ -469,7 +480,7 @@ void key_handler() {
                 }
                 break;
             case 0x50: // down arrow (soft drop)
-                if (current_shape_y < grid_height-1) {
+                if (current_shape_y < grid_height-2) {
                     current_shape_y ++;
                     calc_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
                     if (any_illegality) {
@@ -480,10 +491,31 @@ void key_handler() {
             case 0x39: // space (hard drop)
                 break;
             case 0x48: // up arrow (rotate right)
-                break;
             case 0x2D: // x (rotate right)
+                current_shape_rot++;
+                if (current_shape_rot >= 4) {
+                    current_shape_rot = 0;
+                }
+                calc_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
+                if (any_illegality) {
+                    current_shape_rot --;
+                    if (current_shape_rot < 0) {
+                        current_shape_rot = 3;
+                    }
+                }
                 break;
             case 0x2C: // z (rotate left)
+                current_shape_rot--;
+                if (current_shape_rot < 0) {
+                    current_shape_rot = 3;
+                }
+                calc_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
+                if (any_illegality) {
+                    current_shape_rot ++;
+                    if (current_shape_rot >= 4) {
+                        current_shape_rot = 0;
+                    }
+                }
                 break;
             case 0x2E: // c (hold)
                 if (held_shape == unset) {
