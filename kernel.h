@@ -88,6 +88,21 @@ void print(char string[], char colour, unsigned int y, unsigned int x) {
         }
     }
 }
+void printi(int i, char colour, unsigned int y, unsigned int x) {
+    char *string = "";
+    itoa(i,string,10);
+    while (*string) {
+        if (*string == '\n') {
+            y++;
+            x = 0;
+            string++;
+        } else {
+            screen_lines[0][y][x] = *string++;
+            screen_lines[1][y][x++] = colour;
+        }
+    }
+}
+
 char __printc_switch(char c) {
     switch(c) {
         case '1': return GRAY; break;

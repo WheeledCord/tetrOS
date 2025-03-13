@@ -50,3 +50,30 @@ void k_install_idt() {
     idt_set_gate(33, (unsigned int)key_handler_stub, 0x08, 0x8E);
     idt_load((unsigned int)&idtp);
 }
+void itoa(int value, char *str, int base) {
+    char *rc = str, *ptr = str, *low;
+    if (base < 2 || base > 36) {
+        *str = '\0';
+        return;
+    }
+    if (value < 0 && base == 10) {
+        *ptr++ = '-';
+        value = -value;
+    }
+    int num = value;
+    do {
+        *ptr++ = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[num % base];
+        num /= base;
+    } while (num);
+    *ptr = '\0';
+    low = rc;
+    if (*rc == '-') {
+        low++;
+    }
+    char *high = ptr - 1;
+    while (low < high) {
+        char temp = *low;
+        *low++ = *high;
+        *high-- = temp;
+    }
+}
