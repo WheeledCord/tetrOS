@@ -55,7 +55,7 @@ typedef struct Shape Shape;
 struct GravityProgressionLevel {
     float amount;
     unsigned int levelsSize;
-    unsigned int *levels;
+    unsigned int levels[8];
 };
 typedef struct GravityProgressionLevel GravityProgressionLevel;
 

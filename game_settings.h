@@ -21,8 +21,8 @@
         bool show_shape_ui_grids = false;
 
         // Labels
-        char next_label[] = "   NEXT: ";
-        char held_label[] = "   HELD: ";
+        char next_label[] = "  NEXT: ";
+        char held_label[] = "  HELD: ";
         char lvl_label[] = "   LVL:  ";
         char lines_label[] = "  LINES: ";
         char score_label[] = "  SCORE: ";
@@ -257,5 +257,7 @@
 
 // Misc
     #define slide_time 1.0
+
+    #define time_colour WHITE
 
 #endif
