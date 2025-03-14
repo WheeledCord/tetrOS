@@ -669,27 +669,27 @@ void main_loop() {
         // Hour
         char hour_str[3];
         leading_zero_adder(time.hour,2,hour_str);
-        print(hour_str,time_colour,v2(0,0));
-        print(":",time_colour,v2(2,0));
+        print(hour_str,time_colour,add_v2(time_pos,v2(0,0)));
+        print(":",time_colour,add_v2(time_pos,v2(2,0)));
         // Minute
         char min_str[3];
         leading_zero_adder(time.min,2,min_str);
-        print(min_str,time_colour,v2(3,0));
-        print("-",time_colour,v2(6,0));
+        print(min_str,time_colour,add_v2(time_pos,v2(3,0)));
+        print("-",time_colour,add_v2(time_pos,v2(6,0)));
         // Day
         char day_str[3];
         leading_zero_adder(time.day,2,day_str);
-        print(day_str,time_colour,v2(8,0));
-        print("/",time_colour,v2(10,0));
+        print(day_str,time_colour,add_v2(time_pos,v2(8,0)));
+        print("/",time_colour,add_v2(time_pos,v2(10,0)));
         // Month
         char month_str[3];
         leading_zero_adder(time.month,2,month_str);
-        print(month_str,time_colour,v2(11,0));
-        print("/",time_colour,v2(13,0));
+        print(month_str,time_colour,add_v2(time_pos,v2(11,0)));
+        print("/",time_colour,add_v2(time_pos,v2(13,0)));
         // Year
         char year_str[3];
         leading_zero_adder(time.year-2000,2,year_str);
-        print(year_str,time_colour,v2(14,0));
+        print(year_str,time_colour,add_v2(time_pos,v2(14,0)));
 }
 
 void tick_handler() {

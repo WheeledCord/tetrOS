@@ -51,6 +51,10 @@
     char title_message_colour[] = "222222222222222FF2";
     vec2 title_message_pos = {31,1};
 
+    // Time
+    char time_colour = WHITE;
+    vec2 time_pos = {0,0};
+
     // Flashing
     unsigned int lc_flashes = 3;
     float lc_flash_duration = 0.25;
@@ -257,7 +261,5 @@
 
 // Misc
     #define slide_time 1.0
-
-    #define time_colour WHITE
 
 #endif
