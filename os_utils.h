@@ -77,3 +77,22 @@ void itoa(int value, char *str, int base) {
         *high-- = temp;
     }
 }
+
+unsigned char read_cmos(unsigned char reg) {
+    outb(0x70, reg);
+    return inb(0x71);
+}
+unsigned char bcd_to_bin(unsigned char val) {
+    return (val & 0x0F) + ((val >> 4) * 10);
+}
+unsigned int rtc_to_unix(int sec, int min, int hour, int day, int month, int year) {
+    if (year < 1970) return 0;
+    // Days since epoch (1970-01-01)
+    int days = (year - 1970) * 365 + ((year - 1969) / 4);
+    int month_days[12] = {0,31,59,90,120,151,181,212,243,273,304,334};
+    days += month_days[month - 1] + (day - 1);
+    if (month > 2 && (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)) {
+        days++;
+    }
+    return days * 86400 + hour * 3600 + min * 60 + sec;
+}

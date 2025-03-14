@@ -23,8 +23,8 @@
     bool held_this_turn = false;
 
 // Game Settings
-    bool ascii_mode = default_ascii_mode; 
-    bool show_ghost = default_show_ghost; 
+    bool ascii_mode = default_ascii_mode;
+    bool show_ghost = default_show_ghost;
     bool do_wall_kicks = default_do_wall_kicks;
     bool paused = false; 
 
@@ -389,7 +389,7 @@
         // Center text to box - Level
         char lvl_str[4];
         itoa(lvl,lvl_str,10);
-        unsigned int len = get_string_length(lvl_str);
+        unsigned int len = get_str_length(lvl_str);
         unsigned int offset = 0;
         switch (len) {
             case 1: offset = 1; break;
@@ -400,7 +400,7 @@
         // Center text to box - Lines
         char lines_str[4];
         itoa(total_lines_cleared,lines_str,10);
-        len = get_string_length(lines_str);
+        len = get_str_length(lines_str);
         offset = 0;
         switch (len) {
             case 1: offset = 1; break;
@@ -412,7 +412,7 @@
         // Center text to box - Score
         char score_str[4];
         itoa(score,score_str,10);
-        len = get_string_length(score_str);
+        len = get_str_length(score_str);
         offset = 0;
         switch (len) {
             case 1: offset = 2; break;
@@ -427,9 +427,26 @@
 
 // Bag
     void refil_bag() {
-        // Placeholder code, this should be replaced once randomness is sorted
+        // Empty the bag
         for (unsigned int i = 0; i < total_shapes; i++) {
-            bag[i] = i+1;
+            bag[i] = 0;
+        }
+        // Keep generating shapes untill the bag is full
+        unsigned int i = 0;
+        while (i < total_shapes) {
+            // Generate random shape
+            int item = 1+randInt(total_shapes);
+            // Check if shape is already in the bag, if so, don't add it
+            bool item_in_bag = false;
+            for (unsigned int ii = 0; ii < total_shapes; ii++) {
+                if (bag[ii] == item) {
+                    item_in_bag = true;
+                    break;
+                }
+            }
+            if (!item_in_bag) {
+                bag[i++] = item;
+            }
         }
     }
     enum ShapeID take_from_bag() {
@@ -497,6 +514,7 @@ void calc_shape_illegality(enum ShapeID shapeId, int rot, int cx, int cy) {
 int calc_ghost_y() {
     ghost_shape_y = current_shape_y;
     shape_illegal = false;
+    // Keep moving down untill landed
     while (!shape_illegal) {
         ghost_shape_y++;
         calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,ghost_shape_y);
@@ -647,9 +665,35 @@ void main_loop() {
     draw_held_shape();
     draw_stats();
     draw_indicators();
+    // Time
+        // Hour
+        char hour_str[3];
+        leading_zero_adder(time.hour,2,hour_str);
+        print(hour_str,WHITE,v2(0,0));
+        print(":",WHITE,v2(2,0));
+        // Minute
+        char min_str[3];
+        leading_zero_adder(time.min,2,min_str);
+        print(min_str,WHITE,v2(3,0));
+        print("-",WHITE,v2(6,0));
+        // Day
+        char day_str[3];
+        leading_zero_adder(time.day,2,day_str);
+        print(day_str,WHITE,v2(8,0));
+        print("/",WHITE,v2(10,0));
+        // Month
+        char month_str[3];
+        leading_zero_adder(time.month,2,month_str);
+        print(month_str,WHITE,v2(11,0));
+        print("/",WHITE,v2(13,0));
+        // Year
+        char year_str[3];
+        leading_zero_adder(time.year-2000,2,year_str);
+        print(year_str,WHITE,v2(14,0));
 }
 
 void tick_handler() {
+    read_time();
     tick++;
     // Handle ticks (e.g. gravity or line clear flashing) if not paused
     if (!paused) {
@@ -865,6 +909,10 @@ void key_handler() {
 void kernel_init() {
     // OS Stuff
     outb(0x3C6, 0xFF);
+
+    // Seed the random generator
+    read_time();
+    srand(unix_time);
 
     // Set up display
     clear_screen();

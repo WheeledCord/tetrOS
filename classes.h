@@ -59,4 +59,14 @@ struct GravityProgressionLevel {
 };
 typedef struct GravityProgressionLevel GravityProgressionLevel;
 
+struct Time {
+    int sec;
+    int min;
+    int hour;
+    int day;
+    int month;
+    int year;
+};
+typedef struct Time Time;
+
 #endif
