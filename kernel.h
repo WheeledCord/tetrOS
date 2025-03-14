@@ -1,30 +1,9 @@
 #include "os_utils.h"
-#include "game_settings.h"
+#include "colours.h"
 #include "classes.h"
 #ifndef KERNEL_H
 #define KERNEL_H
 
-// Colors
-#define BLACK 0x00
-#define WHITE 0x01
-#define GRAY 0x02
-#define RED 0x03
-#define ORANGE 0x04
-#define YELLOW 0x05
-#define GREEN 0x06
-#define CYAN 0x07
-#define BLUE 0x08
-#define PURPLE 0x09
-#define LIGHT_RED 0x0A
-#define LIGHT_ORANGE 0x0B
-#define LIGHT_YELLOW 0x0C
-#define LIGHT_GREEN 0x0D
-#define LIGHT_CYAN 0x0E
-#define LIGHT_BLUE CYAN
-#define LIGHT_PURPLE 0x0F
-char colour_combo(char bg, char fg) {
-    return (char)((int)bg*16+(int)fg);
-}
 
 // Screen utilities
 void disable_cursor() {
@@ -76,7 +55,11 @@ void screen_update() {
     }
     clear_screen();
 }
-void print(char string[], char colour, unsigned int y, unsigned int x) {
+void print(char string[], char colour, vec2 pos) {
+    int x = pos.x;
+    if (x < 0) { x = 0; }
+    int y = pos.y;
+    if (y < 0) { y = 0; }
     while (*string) {
         if (*string == '\n') {
             y++;
@@ -88,7 +71,11 @@ void print(char string[], char colour, unsigned int y, unsigned int x) {
         }
     }
 }
-void printi(int i, char colour, unsigned int y, unsigned int x) {
+void printi(int i, char colour, vec2 pos) {
+    int x = pos.x;
+    if (x < 0) { x = 0; }
+    int y = pos.y;
+    if (y < 0) { y = 0; }
     char *string = "";
     itoa(i,string,10);
     while (*string) {
@@ -124,8 +111,23 @@ char __printc_switch(char c) {
         default: return BLACK; break;
     }
 }
-void printc(char *string, char *colours, unsigned int y, unsigned int x) {
+unsigned int get_string_length(char *string) {
     unsigned int string_length = 0;
+    while(*string) {
+        string++;
+        string_length++;
+    }
+    for(unsigned int i = 0; i < string_length; i++) {
+        string--;
+    }
+    return string_length;
+}
+void printc(char *string, char *colours, vec2 pos) {
+    int x = pos.x;
+    if (x < 0) { x = 0; }
+    int y = pos.y;
+    if (y < 0) { y = 0; }
+    unsigned int string_length = get_string_length(string);
     while (*string) {
         if (*string == '\n') {
             y++;
@@ -134,7 +136,6 @@ void printc(char *string, char *colours, unsigned int y, unsigned int x) {
         } else {
             screen_lines[0][y][x++] = *string++;
         }
-        string_length++;
     }
     x = x-string_length;
     while (*colours) {

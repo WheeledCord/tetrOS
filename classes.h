@@ -9,23 +9,54 @@
 // Null
 #define null 0
 
-// Shapes
-enum ShapeID {
-    o,
-    i,
-    l,
-    j,
-    s,
-    z,
-    t,
-    unset
+// Vector2
+struct vec2 {
+    int x;
+    int y;
 };
+typedef struct vec2 vec2;
+vec2 v2(int x, int y) {
+    vec2 out = {x,y};
+    return out;
+}
+vec2 add_v2(vec2 a, vec2 b) {
+    vec2 out = a;
+    out.x += b.x;
+    out.y += b.y;
+    return out;
+}
+vec2 sub_v2(vec2 a, vec2 b) {
+    vec2 out = a;
+    out.x -= b.x;
+    out.y -= b.y;
+    return out;
+}
+vec2 mult_v2(vec2 a, vec2 b) {
+    vec2 out = a;
+    out.x *= b.x;
+    out.y *= b.y;
+    return out;
+}
+vec2 div_v2(vec2 a, vec2 b) {
+    vec2 out = a;
+    out.x /= b.x;
+    out.y /= b.y;
+    return out;
+}
 
 struct Shape {
-    char color_bg;
-    char color_fg;
-    int data[4][4][4];
+    char bg;
+    char fg;
+    vec2 ui_offset;
+    vec2 rotations[4][4];
 };
+typedef struct Shape Shape;
 
+struct GravityProgressionLevel {
+    float amount;
+    unsigned int levelsSize;
+    unsigned int *levels;
+};
+typedef struct GravityProgressionLevel GravityProgressionLevel;
 
 #endif

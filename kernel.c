@@ -1,6 +1,6 @@
-#include "kernel.h"
 #include "game_settings.h"
 #include "classes.h"
+#include "kernel.h"
 #include "math.h"
 
 // Ticks
@@ -10,7 +10,7 @@
 
 // Game Variables
     int current_shape_x,current_shape_y,ghost_shape_y,current_shape_rot;
-    unsigned int bag[7];
+    unsigned int bag[total_shapes];
     enum ShapeID next_shape;
     enum ShapeID held_shape;
     enum ShapeID current_shape;
@@ -24,6 +24,8 @@
 
 // Game Settings
     bool ascii_mode = default_ascii_mode; 
+    bool show_ghost = default_show_ghost; 
+    bool do_wall_kicks = default_do_wall_kicks;
     bool paused = false; 
 
 // Tilemap
@@ -36,249 +38,254 @@
     }
 }
 
-// Points
-    int shape_points[4][2];
-    void calc_shape_points(enum ShapeID shape, int rot) {
-        // Get points data
-        int r[4][4] = shapes[shape].data[rot];
-        // Plot points to new list, and determine center positions
-        int cx = 0, cy = 0;
-        int points[4][2] = {{0,0},{0,0},{0,0},{0,0}};
-        unsigned int i = 0;
-        for (int y = 0; y < 4; y++) {
-            int *row = r[y];
-            for (int x = 0; x < 4; x++) {
-                switch(row[x]) {
-                    case 1: points[i][0] = x; points[i][1] = y; i++; break; // normal point
-                    case 2: points[i][0] = x; points[i][1] = y; cx = x; cy = y; i++; break; // center point
-                    default: break;
-                }
-            }
-        }
-        // Copy points over to output array
-        for (i = 0; i < 4; i++) {
-            shape_points[i][0] = points[i][0] - cx;
-            shape_points[i][1] = points[i][1] - cy;
-        }
-    }
-
 // Drawing to Screen
-    #define top_margin 3
-    #define left_margin (40-grid_width-1)
-    #define shapes_middle_margin ((top_margin+grid_height)-8)
-    #define shapes_left_margin (80-left_margin/2-5)
-    // #define stats_middle_margin ((top_margin+grid_height)-8)
-    #define stats_left_margin (left_margin/2-5)
-    #define stats_width 7
-    #define stats_gap 4
-
     void draw_boxes_and_grid() {
-        // Get strings for grid characters, from either grid_chars_ascii if in ascii mode, or grid_chars if not
+        // Get stats labels width
+        int stats_label_width = sizeof(lvl_label)-1;
+
+        // Get strings for grid and box characters, using ascii set if in ascii mode
         char chars[11][2];
         for (unsigned int i = 0; i < 11; i++) {
-            if (ascii_mode) {
-                chars[i][0] = grid_chars_ascii[i];
+            if (i < 2) {
+                if (ascii_mode) {
+                    chars[i][0] = grid_chars_ascii[i];
+                } else {
+                    chars[i][0] = grid_chars[i];
+                }
             } else {
-                chars[i][0] = grid_chars[i];
+                if (ascii_mode) {
+                    chars[i][0] = box_chars_ascii[i-2];
+                } else {
+                    chars[i][0] = box_chars[i-2];
+                }
             }
             chars[i][1] = 0x00;
+        }
+        char shape_ui_filler[3] = "  ";
+        if (show_shape_ui_grids) {
+            shape_ui_filler[0] = chars[0][0];
+            shape_ui_filler[1] = chars[1][0];
         }
         // Draw the play area
             // Draw the top edge
             unsigned int x = 0;
-            print(chars[2],WHITE,top_margin,left_margin+x++); // top left corner
+            print(chars[2],box_colour,add_v2(play_area_top_left,v2(x++,0))); // top left corner
             for (unsigned int i = 0; i < grid_width*2; i++) {
-                print(chars[3],WHITE,top_margin,left_margin+x++); // top edge
+                print(chars[3],box_colour,add_v2(play_area_top_left,v2(x++,0))); // top edge
             }
-            print(chars[4],WHITE,top_margin,left_margin+x++); // top right corner
+            print(chars[4],box_colour,add_v2(play_area_top_left,v2(x++,0))); // top right corner
             // Draw the left and right edges, and the grid
             for (unsigned int y = 1; y <= grid_height; y++) {
                 x = 0;
-                print(chars[5],WHITE,top_margin+y,left_margin+x++); // left edge
+                print(chars[5],box_colour,add_v2(play_area_top_left,v2(x++,y))); // left edge
                 for (unsigned int i = 0; i < grid_width; i++) {
-                    print(chars[0],GRAY,top_margin+y,left_margin+x++); // left half of tile on grid
-                    print(chars[1],GRAY,top_margin+y,left_margin+x++); // right half of tile on grid
+                    print(chars[0],grid_colour,add_v2(play_area_top_left,v2(x++,y))); // left half of tile on grid
+                    print(chars[1],grid_colour,add_v2(play_area_top_left,v2(x++,y))); // right half of tile on grid
                 }
-                print(chars[5],WHITE,top_margin+y,left_margin+x++); // right edge
+                print(chars[5],box_colour,add_v2(play_area_top_left,v2(x++,y))); // right edge
             }
             // Draw the bottom edge
             x = 0;
-            print(chars[6],WHITE,top_margin+grid_height+1,left_margin+x++); // bottom left corner
+            print(chars[6],box_colour,add_v2(play_area_top_left,v2(x++,grid_height+1))); // bottom left corner
             for (unsigned int i = 0; i < grid_width*2; i++) {
-                print(chars[7],WHITE,top_margin+grid_height+1,left_margin+x++); // bottom edge
+                print(chars[7],box_colour,add_v2(play_area_top_left,v2(x++,grid_height+1))); // bottom edge
             }
-            print(chars[8],WHITE,top_margin+grid_height+1,left_margin+x++); // bottom right corner
+            print(chars[8],box_colour,add_v2(play_area_top_left,v2(x++,grid_height+1))); // bottom right corner
 
         // Draw the next shape box
             // Draw the top edge
             x = 0;
-            print(chars[2],WHITE,top_margin+2,shapes_left_margin+x++); // top left corner
+            print(chars[2],box_colour,add_v2(next_shape_top_left,v2(x++,0))); // top left corner
             for (unsigned int i = 0; i < 8; i++) {
-                print(chars[3],WHITE,top_margin+2,shapes_left_margin+x++); // top edge
+                print(chars[3],box_colour,add_v2(next_shape_top_left,v2(x++,0))); // top edge
             }
-            print(chars[4],WHITE,top_margin+2,shapes_left_margin+x++); // top right corner
-            // Draw the left and right edges, and the "NEXT" Label
-            print(chars[5],WHITE,top_margin+2+1,shapes_left_margin); // left edge
-            print("  NEXT: ",WHITE,top_margin+2+1,shapes_left_margin+1); // "NEXT" label
-            print(chars[5],WHITE,top_margin+2+1,shapes_left_margin+1+8); // right edge
+            print(chars[4],box_colour,add_v2(next_shape_top_left,v2(x++,0))); // top right corner
+            // Draw the label + left and right edges
+            print(chars[5],box_colour,add_v2(next_shape_top_left,v2(0,1))); // left edge
+            print(next_label,box_colour,add_v2(next_shape_top_left,v2(1,1))); // label
+            print(chars[5],box_colour,add_v2(next_shape_top_left,v2(1+8,1))); // right edge
             // Draw the left and right joints, and the seperating line
             x = 0;
-            print(chars[9],WHITE,top_margin+2+2,shapes_left_margin+x++); // left joint
+            print(chars[9],box_colour,add_v2(next_shape_top_left,v2(x++,2))); // left joint
             for (unsigned int i = 0; i < 8; i++) {
-                print(chars[7],WHITE,top_margin+2+2,shapes_left_margin+x++); // seperating line
+                print(chars[7],box_colour,add_v2(next_shape_top_left,v2(x++,2))); // seperating line
             }
-            print(chars[10],WHITE,top_margin+2+2,shapes_left_margin+x++); // right joint
+            print(chars[10],box_colour,add_v2(next_shape_top_left,v2(x++,2))); // right joint
             // Draw the left and right edges, and the space
             for (unsigned int y = 1; y <= 4; y++) {
                 x = 0;
-                print(chars[5],WHITE,top_margin+2+2+y,shapes_left_margin+x++); // left edge
+                print(chars[5],box_colour,add_v2(next_shape_top_left,v2(x++,2+y))); // left edge
                 for (unsigned int i = 0; i < 4; i++) {
-                    print("  ",GRAY,top_margin+2+2+y,shapes_left_margin+x++); // space
+                    print(shape_ui_filler,grid_colour,add_v2(next_shape_top_left,v2(x++,2+y))); // space
                     x++;
                 }
-                print(chars[5],WHITE,top_margin+2+2+y,shapes_left_margin+x++); // right edge
+                print(chars[5],box_colour,add_v2(next_shape_top_left,v2(x++,2+y))); // right edge
             }
             // Draw the bottom edge
             x = 0;
-            print(chars[6],WHITE,top_margin+2+2+5,shapes_left_margin+x++); // bottom left corner
+            print(chars[6],box_colour,add_v2(next_shape_top_left,v2(x++,2+5))); // bottom left corner
             for (unsigned int i = 0; i < 8; i++) {
-                print(chars[7],WHITE,top_margin+2+2+5,shapes_left_margin+x++); // bottom edge
+                print(chars[7],box_colour,add_v2(next_shape_top_left,v2(x++,2+5))); // bottom edge
             }
-            print(chars[8],WHITE,top_margin+2+2+5,shapes_left_margin+x++); // bottom right corner
+            print(chars[8],box_colour,add_v2(next_shape_top_left,v2(x++,2+5))); // bottom right corner
 
         // Draw the held shape box
             // Draw the top edge
             x = 0;
-            print(chars[2],WHITE,shapes_middle_margin,shapes_left_margin+x++); // top left corner
+            print(chars[2],box_colour,add_v2(held_shape_top_left,v2(x++,0))); // top left corner
             for (unsigned int i = 0; i < 8; i++) {
-                print(chars[3],WHITE,shapes_middle_margin,shapes_left_margin+x++); // top edge
+                print(chars[3],box_colour,add_v2(held_shape_top_left,v2(x++,0))); // top edge
             }
-            print(chars[4],WHITE,shapes_middle_margin,shapes_left_margin+x++); // top right corner
-            // Draw the left and right edges, and the "HELD" Label
-            print(chars[5],WHITE,shapes_middle_margin+1,shapes_left_margin); // left edge
-            print("  HELD: ",WHITE,shapes_middle_margin+1,shapes_left_margin+1); // "HELD" label
-            print(chars[5],WHITE,shapes_middle_margin+1,shapes_left_margin+1+8); // right edge
+            print(chars[4],box_colour,add_v2(held_shape_top_left,v2(x++,0))); // top right corner
+            // Draw the label + left and right edges
+            print(chars[5],box_colour,add_v2(held_shape_top_left,v2(0,1))); // left edge
+            print(held_label,box_colour,add_v2(held_shape_top_left,v2(1,1))); // label
+            print(chars[5],box_colour,add_v2(held_shape_top_left,v2(1+8,1))); // right edge
             // Draw the left and right joints, and the seperating line
             x = 0;
-            print(chars[9],WHITE,shapes_middle_margin+2,shapes_left_margin+x++); // left joint
+            print(chars[9],box_colour,add_v2(held_shape_top_left,v2(x++,2))); // left joint
             for (unsigned int i = 0; i < 8; i++) {
-                print(chars[7],WHITE,shapes_middle_margin+2,shapes_left_margin+x++); // seperating line
+                print(chars[7],box_colour,add_v2(held_shape_top_left,v2(x++,2))); // seperating line
             }
-            print(chars[10],WHITE,shapes_middle_margin+2,shapes_left_margin+x++); // right joint
+            print(chars[10],box_colour,add_v2(held_shape_top_left,v2(x++,2))); // right joint
             // Draw the left and right edges, and the space
             for (unsigned int y = 1; y <= 4; y++) {
                 x = 0;
-                print(chars[5],WHITE,shapes_middle_margin+2+y,shapes_left_margin+x++); // left edge
+                print(chars[5],box_colour,add_v2(held_shape_top_left,v2(x++,2+y))); // left edge
                 for (unsigned int i = 0; i < 4; i++) {
-                    print("  ",GRAY,shapes_middle_margin+2+y,shapes_left_margin+x++); // space
+                    print(shape_ui_filler,grid_colour,add_v2(held_shape_top_left,v2(x++,2+y))); // space
                     x++;
                 }
-                print(chars[5],WHITE,shapes_middle_margin+2+y,shapes_left_margin+x++); // right edge
+                print(chars[5],box_colour,add_v2(held_shape_top_left,v2(x++,2+y))); // right edge
             }
             // Draw the bottom edge
             x = 0;
-            print(chars[6],WHITE,shapes_middle_margin+2+5,shapes_left_margin+x++); // bottom left corner
+            print(chars[6],box_colour,add_v2(held_shape_top_left,v2(x++,2+5))); // bottom left corner
             for (unsigned int i = 0; i < 8; i++) {
-                print(chars[7],WHITE,shapes_middle_margin+2+5,shapes_left_margin+x++); // bottom edge
+                print(chars[7],box_colour,add_v2(held_shape_top_left,v2(x++,2+5))); // bottom edge
             }
-            print(chars[8],WHITE,shapes_middle_margin+2+5,shapes_left_margin+x++); // bottom right corner
+            print(chars[8],box_colour,add_v2(held_shape_top_left,v2(x++,2+5))); // bottom right corner
         
         // Draw the lvl stats box
             // Draw the top edge
             x = 0;
-            print(chars[2],WHITE,top_margin+2,stats_left_margin+x++); // top left corner
-            for (unsigned int i = 0; i < stats_width; i++) {
-                print(chars[3],WHITE,top_margin+2,stats_left_margin+x++); // top edge
+            print(chars[2],box_colour,add_v2(stat_lvl_top_left,v2(x++,0))); // top left corner
+            for (unsigned int i = 0; i < stats_label_width; i++) {
+                print(chars[3],box_colour,add_v2(stat_lvl_top_left,v2(x++,0))); // top edge
             }
-            print(chars[4],WHITE,top_margin+2,stats_left_margin+x++); // top right corner
-            // Draw the left and right edges, and the "LVL" Label
-            print(chars[5],WHITE,top_margin+2+1,stats_left_margin); // left edge
-            print("  LVL: ",WHITE,top_margin+2+1,stats_left_margin+1); // "LVL" label
-            print(chars[5],WHITE,top_margin+2+1,stats_left_margin+1+stats_width); // right edge
+            print(chars[4],box_colour,add_v2(stat_lvl_top_left,v2(x++,0))); // top right corner
+            // Draw the label + left and right edges
+            print(chars[5],box_colour,add_v2(stat_lvl_top_left,v2(0,1))); // left edge
+            print(lvl_label,box_colour,add_v2(stat_lvl_top_left,v2(1,1))); // label
+            print(chars[5],box_colour,add_v2(stat_lvl_top_left,v2(1+stats_label_width,1))); // right edge
             // Draw the left and right joints, and the seperating line
             x = 0;
-            print(chars[9],WHITE,top_margin+2+2,stats_left_margin+x++); // left joint
-            for (unsigned int i = 0; i < stats_width; i++) {
-                print(chars[7],WHITE,top_margin+2+2,stats_left_margin+x++); // seperating line
+            print(chars[9],box_colour,add_v2(stat_lvl_top_left,v2(x++,2))); // left joint
+            for (unsigned int i = 0; i < stats_label_width; i++) {
+                print(chars[7],box_colour,add_v2(stat_lvl_top_left,v2(x++,2))); // seperating line
             }
-            print(chars[10],WHITE,top_margin+2+2,stats_left_margin+x++); // right joint
+            print(chars[10],box_colour,add_v2(stat_lvl_top_left,v2(x++,2))); // right joint
             // Draw the left and right edges, and the space
             x = 0;
-            print(chars[5],WHITE,top_margin+2+2+1,stats_left_margin+x++); // left edge
-            for (unsigned int i = 0; i < stats_width; i++) {
-                print(" ",GRAY,top_margin+2+2+1,stats_left_margin+x++); // space
+            print(chars[5],box_colour,add_v2(stat_lvl_top_left,v2(x++,2+1))); // left edge
+            for (unsigned int i = 0; i < stats_label_width; i++) {
+                print(" ",grid_colour,add_v2(stat_lvl_top_left,v2(x++,2+1))); // space
             }
-            print(chars[5],WHITE,top_margin+2+2+1,stats_left_margin+x++); // right edge
+            print(chars[5],box_colour,add_v2(stat_lvl_top_left,v2(x++,2+1))); // right edge
             // Draw the bottom edge
             x = 0;
-            print(chars[6],WHITE,top_margin+2+2+2,stats_left_margin+x++); // bottom left corner
-            for (unsigned int i = 0; i < stats_width; i++) {
-                print(chars[7],WHITE,top_margin+2+2+2,stats_left_margin+x++); // bottom edge
+            print(chars[6],box_colour,add_v2(stat_lvl_top_left,v2(x++,2+2))); // bottom left corner
+            for (unsigned int i = 0; i < stats_label_width; i++) {
+                print(chars[7],box_colour,add_v2(stat_lvl_top_left,v2(x++,2+2))); // bottom edge
             }
-            print(chars[8],WHITE,top_margin+2+2+2,stats_left_margin+x++); // bottom right corner
+            print(chars[8],box_colour,add_v2(stat_lvl_top_left,v2(x++,2+2))); // bottom right corner
 
-        // Draw the lines cleared stats box
+        // Draw the lines stats box
             // Draw the top edge
             x = 0;
-            print(chars[2],WHITE,top_margin+2+stats_gap+2,stats_left_margin+x++); // top left corner
-            for (unsigned int i = 0; i < stats_width; i++) {
-                print(chars[3],WHITE,top_margin+2+stats_gap+2,stats_left_margin+x++); // top edge
+            print(chars[2],box_colour,add_v2(stat_lines_top_left,v2(x++,0))); // top left corner
+            for (unsigned int i = 0; i < stats_label_width; i++) {
+                print(chars[3],box_colour,add_v2(stat_lines_top_left,v2(x++,0))); // top edge
             }
-            print(chars[4],WHITE,top_margin+2+stats_gap+2,stats_left_margin+x++); // top right corner
-            // Draw the left and right edges, and the "LVL" Label
-            print(chars[5],WHITE,top_margin+2+stats_gap+2+1,stats_left_margin); // left edge
-            print(" LINES:",WHITE,top_margin+2+stats_gap+2+1,stats_left_margin+1); // "LVL" label
-            print(chars[5],WHITE,top_margin+2+stats_gap+2+1,stats_left_margin+1+stats_width); // right edge
+            print(chars[4],box_colour,add_v2(stat_lines_top_left,v2(x++,0))); // top right corner
+            // Draw the label + left and right edges
+            print(chars[5],box_colour,add_v2(stat_lines_top_left,v2(0,1))); // left edge
+            print(lines_label,box_colour,add_v2(stat_lines_top_left,v2(1,1))); // label
+            print(chars[5],box_colour,add_v2(stat_lines_top_left,v2(1+stats_label_width,1))); // right edge
             // Draw the left and right joints, and the seperating line
             x = 0;
-            print(chars[9],WHITE,top_margin+2+stats_gap+2+2,stats_left_margin+x++); // left joint
-            for (unsigned int i = 0; i < stats_width; i++) {
-                print(chars[7],WHITE,top_margin+2+stats_gap+2+2,stats_left_margin+x++); // seperating line
+            print(chars[9],box_colour,add_v2(stat_lines_top_left,v2(x++,2))); // left joint
+            for (unsigned int i = 0; i < stats_label_width; i++) {
+                print(chars[7],box_colour,add_v2(stat_lines_top_left,v2(x++,2))); // seperating line
             }
-            print(chars[10],WHITE,top_margin+2+stats_gap+2+2,stats_left_margin+x++); // right joint
+            print(chars[10],box_colour,add_v2(stat_lines_top_left,v2(x++,2))); // right joint
             // Draw the left and right edges, and the space
             x = 0;
-            print(chars[5],WHITE,top_margin+2+stats_gap+2+2+1,stats_left_margin+x++); // left edge
-            for (unsigned int i = 0; i < stats_width; i++) {
-                print(" ",GRAY,top_margin+2+stats_gap+2+2+1,stats_left_margin+x++); // space
+            print(chars[5],box_colour,add_v2(stat_lines_top_left,v2(x++,2+1))); // left edge
+            for (unsigned int i = 0; i < stats_label_width; i++) {
+                print(" ",grid_colour,add_v2(stat_lines_top_left,v2(x++,2+1))); // space
             }
-            print(chars[5],WHITE,top_margin+2+stats_gap+2+2+1,stats_left_margin+x++); // right edge
+            print(chars[5],box_colour,add_v2(stat_lines_top_left,v2(x++,2+1))); // right edge
             // Draw the bottom edge
             x = 0;
-            print(chars[6],WHITE,top_margin+2+stats_gap+2+2+2,stats_left_margin+x++); // bottom left corner
-            for (unsigned int i = 0; i < stats_width; i++) {
-                print(chars[7],WHITE,top_margin+2+stats_gap+2+2+2,stats_left_margin+x++); // bottom edge
+            print(chars[6],box_colour,add_v2(stat_lines_top_left,v2(x++,2+2))); // bottom left corner
+            for (unsigned int i = 0; i < stats_label_width; i++) {
+                print(chars[7],box_colour,add_v2(stat_lines_top_left,v2(x++,2+2))); // bottom edge
             }
-            print(chars[8],WHITE,top_margin+2+stats_gap+2+2+2,stats_left_margin+x++); // bottom right corner
+            print(chars[8],box_colour,add_v2(stat_lines_top_left,v2(x++,2+2))); // bottom right corner
+
+        // Draw the score stats box
+            // Draw the top edge
+            x = 0;
+            print(chars[2],box_colour,add_v2(stat_score_top_left,v2(x++,0))); // top left corner
+            for (unsigned int i = 0; i < stats_label_width; i++) {
+                print(chars[3],box_colour,add_v2(stat_score_top_left,v2(x++,0))); // top edge
+            }
+            print(chars[4],box_colour,add_v2(stat_score_top_left,v2(x++,0))); // top right corner
+            // Draw the label + left and right edges
+            print(chars[5],box_colour,add_v2(stat_score_top_left,v2(0,1))); // left edge
+            print(score_label,box_colour,add_v2(stat_score_top_left,v2(1,1))); // label
+            print(chars[5],box_colour,add_v2(stat_score_top_left,v2(1+stats_label_width,1))); // right edge
+            // Draw the left and right joints, and the seperating line
+            x = 0;
+            print(chars[9],box_colour,add_v2(stat_score_top_left,v2(x++,2))); // left joint
+            for (unsigned int i = 0; i < stats_label_width; i++) {
+                print(chars[7],box_colour,add_v2(stat_score_top_left,v2(x++,2))); // seperating line
+            }
+            print(chars[10],box_colour,add_v2(stat_score_top_left,v2(x++,2))); // right joint
+            // Draw the left and right edges, and the space
+            x = 0;
+            print(chars[5],box_colour,add_v2(stat_score_top_left,v2(x++,2+1))); // left edge
+            for (unsigned int i = 0; i < stats_label_width; i++) {
+                print(" ",grid_colour,add_v2(stat_score_top_left,v2(x++,2+1))); // space
+            }
+            print(chars[5],box_colour,add_v2(stat_score_top_left,v2(x++,2+1))); // right edge
+            // Draw the bottom edge
+            x = 0;
+            print(chars[6],box_colour,add_v2(stat_score_top_left,v2(x++,2+2))); // bottom left corner
+            for (unsigned int i = 0; i < stats_label_width; i++) {
+                print(chars[7],box_colour,add_v2(stat_score_top_left,v2(x++,2+2))); // bottom edge
+            }
+            print(chars[8],box_colour,add_v2(stat_score_top_left,v2(x++,2+2))); // bottom right corner
     }
 
     void draw_current_shape() {
         // Don't draw anything if clearing line
         if (lc_tick == 0) {
-            // Calculate the relative points
-            calc_shape_points(current_shape,current_shape_rot);
+            // Get the shape data
+            Shape shape = shapes[current_shape];
+            // Get the relative points
+            vec2 *shape_points = shape.rotations[current_shape_rot];
+            // Get shape colour. If in ascii mode, only colour foreground, else colour both background and foreground
+            char colour;
+            if (ascii_mode) {
+                colour = shape.bg;
+            } else {
+                colour = colour_combo(shape.bg,shape.fg);
+            }
+            // Plot each point onto the grid
             for (unsigned int p = 0; p < 4; p++) {
-                // Select shape colour
-                char bg,fg;
-                switch (current_shape) {
-                    case o: bg = YELLOW; fg = LIGHT_YELLOW; break;
-                    case i: bg = CYAN; fg = LIGHT_CYAN; break;
-                    case l: bg = GREEN; fg = LIGHT_GREEN; break;
-                    case j: bg = RED; fg = LIGHT_RED; break;
-                    case s: bg = ORANGE; fg = LIGHT_ORANGE; break;
-                    case z: bg = BLUE; fg = LIGHT_BLUE; break;
-                    case t: bg = PURPLE; fg = LIGHT_PURPLE; break;
-                    default: bg = GRAY; fg = WHITE; break;
-                }
-                // If in ascii mode, only colour foreground, else colour both background and foreground
-                char colour;
-                if (ascii_mode) {
-                    colour = bg;
-                } else {
-                    colour = colour_combo(bg,fg);
-                }
-                // Plot the point onto the grid
-                print("[]",colour,top_margin+1+current_shape_y+shape_points[p][1],left_margin+1+2*(current_shape_x+shape_points[p][0]));
+                print("[]",colour,add_v2(play_area_top_left,v2(1+2*(current_shape_x+shape_points[p].x),1+current_shape_y+shape_points[p].y)));
             }
         }
     }
@@ -286,79 +293,57 @@
     void draw_ghost_shape() {
         // Don't draw anything if clearing line
         if (lc_tick == 0) {
-            // Calculate the relative points
-            calc_shape_points(current_shape,current_shape_rot);
+            // Get the relative points
+            vec2 *shape_points = shapes[current_shape].rotations[current_shape_rot];
+            // Get shape colour. If in ascii mode, only colour foreground, else colour both background and foreground
+            char colour;
+            if (ascii_mode) {
+                colour = shapes[unset].bg;
+            } else {
+                colour = colour_combo(shapes[unset].bg,shapes[unset].fg);
+            }
+            // Plot the points onto the grid
             for (unsigned int p = 0; p < 4; p++) {
-                // If in ascii mode, only colour foreground, else colour both background and foreground
-                char colour;
-                if (ascii_mode) {
-                    colour = GRAY;
-                } else {
-                    colour = colour_combo(GRAY,WHITE);
-                }
-                // Plot the point onto the grid
-                print("[]",colour,top_margin+1+ghost_shape_y+shape_points[p][1],left_margin+1+2*(current_shape_x+shape_points[p][0]));
+                print("[]",colour,add_v2(play_area_top_left,v2(1+2*(current_shape_x+shape_points[p].x),1+ghost_shape_y+shape_points[p].y)));
             }
         }
     }
 
     void draw_next_shape() {
-        // Calculate the relative points for the default rotation
-        calc_shape_points(next_shape,0);
+        // Get the shape data
+        Shape shape = shapes[next_shape];
+        // Get the relative points for the default rotation
+        vec2 *shape_points = shape.rotations[0];
+        // Get shape colour. If in ascii mode, only colour foreground, else colour both background and foreground
+        char colour;
+        if (ascii_mode) {
+            colour = shape.bg;
+        } else {
+            colour = colour_combo(shape.bg,shape.fg);
+        }
+        // Plot the points onto the indicator space grid
         for (unsigned int p = 0; p < 4; p++) {
-            // Select shape colour and offset
-            char bg,fg;
-            int x_offset = 0, y_offset = 0;
-            switch (next_shape) {
-                case o: bg = YELLOW; fg = LIGHT_YELLOW; x_offset = 2; y_offset = 2; break;
-                case i: bg = CYAN; fg = LIGHT_CYAN; x_offset = 2; y_offset = 1; break;
-                case l: bg = GREEN; fg = LIGHT_GREEN; x_offset = 3; y_offset = 2; break;
-                case j: bg = RED; fg = LIGHT_RED; x_offset = 3; y_offset = 2; break;
-                case s: bg = ORANGE; fg = LIGHT_ORANGE; x_offset = 3; y_offset = 2; break;
-                case z: bg = BLUE; fg = LIGHT_BLUE; x_offset = 3; y_offset = 2; break;
-                case t: bg = PURPLE; fg = LIGHT_PURPLE; x_offset = 3; y_offset = 2; break;
-                default: bg = GRAY; fg = WHITE; x_offset = 3; y_offset = 2; break;
-            }
-            // If in ascii mode, only colour foreground, else colour both background and foreground
-            char colour;
-            if (ascii_mode) {
-                colour = bg;
-            } else {
-                colour = colour_combo(bg,fg);
-            }
-            // Plot the point onto the indicator space grid
-            print("[]",colour,top_margin+2+3+shape_points[p][1]+y_offset,shapes_left_margin+1+2*(shape_points[p][0])+x_offset);
+            print("[]",colour,add_v2(next_shape_top_left,v2(1+2*shape_points[p].x+shape.ui_offset.x,3+shape_points[p].y+shape.ui_offset.y)));
         }
     }
 
     void draw_held_shape() {
         // Don't draw anything if no shape is held
         if (held_shape != unset) {
-            // Calculate the relative points for the default rotation
-            calc_shape_points(held_shape,0);
+            // Get the shape data
+            Shape shape = shapes[held_shape];
+            // Get the relative points for the default rotation
+            vec2 *shape_points = shape.rotations[0];
+            // Get shape colour. If in ascii mode, only colour foreground, else colour both background and foreground
+            char colour;
+            if (ascii_mode) {
+                colour = shape.bg;
+            } else {
+                colour = colour_combo(shape.bg,shape.fg);
+            }
+            // Plot the points onto the indicator space grid
             for (unsigned int p = 0; p < 4; p++) {
-                // Select shape colour and offset
-                char bg,fg;
-                int x_offset = 0, y_offset = 0;
-                switch (held_shape) {
-                    case o: bg = YELLOW; fg = LIGHT_YELLOW; x_offset = 2; y_offset = 2; break;
-                    case i: bg = CYAN; fg = LIGHT_CYAN; x_offset = 2; y_offset = 1; break;
-                    case l: bg = GREEN; fg = LIGHT_GREEN; x_offset = 3; y_offset = 2; break;
-                    case j: bg = RED; fg = LIGHT_RED; x_offset = 3; y_offset = 2; break;
-                    case s: bg = ORANGE; fg = LIGHT_ORANGE; x_offset = 3; y_offset = 2; break;
-                    case z: bg = BLUE; fg = LIGHT_BLUE; x_offset = 3; y_offset = 2; break;
-                    case t: bg = PURPLE; fg = LIGHT_PURPLE; x_offset = 3; y_offset = 2; break;
-                    default: bg = GRAY; fg = WHITE; x_offset = 3; y_offset = 2; break;
-                }
-                // If in ascii mode, only colour foreground, else colour both background and foreground
-                char colour;
-                if (ascii_mode) {
-                    colour = bg;
-                } else {
-                    colour = colour_combo(bg,fg);
-                }
-                // Plot the point onto the indicator space grid
-                print("[]",colour,shapes_middle_margin+3+shape_points[p][1]+y_offset,shapes_left_margin+1+2*(shape_points[p][0])+x_offset);
+                print("[]",colour,add_v2(held_shape_top_left,v2(1+2*shape_points[p].x+shape.ui_offset.x,3+shape_points[p].y+shape.ui_offset.y)));
             }
         }
     }
@@ -366,18 +351,15 @@
     void draw_stamped_shapes() {
         for (unsigned int y = 0; y < grid_height; y++) {
             for (int x = 0; x < grid_width; x++) {
+                int tile = tilemap[y][x];
                 // Select shape colour
                 char bg,fg;
-                switch (tilemap[y][x]) {
-                    case -1: bg = WHITE; fg = WHITE; break;
-                    case 1: bg = YELLOW; fg = LIGHT_YELLOW; break;
-                    case 2: bg = CYAN; fg = LIGHT_CYAN; break;
-                    case 3: bg = GREEN; fg = LIGHT_GREEN; break;
-                    case 4: bg = RED; fg = LIGHT_RED; break;
-                    case 5: bg = ORANGE; fg = LIGHT_ORANGE; break;
-                    case 6: bg = BLUE; fg = LIGHT_BLUE; break;
-                    case 7: bg = PURPLE; fg = LIGHT_PURPLE; break;
-                    default: bg = BLACK; fg = GRAY; break;
+                if (tile == -1) { // line flashing
+                    bg = flash_colour;
+                    fg = flash_colour;
+                } else if (tile != 0) { // non empty tiles
+                    bg = shapes[tile-1].bg;
+                    fg = shapes[tile-1].fg;
                 }
                 // If in ascii mode, only colour foreground, else colour both background and foreground
                 char colour;
@@ -387,8 +369,8 @@
                     colour = colour_combo(bg,fg);
                 }
                 // Plot the point onto the indicator space grid
-                if (tilemap[y][x] != 0) {
-                    print("[]",colour,top_margin+1+y,left_margin+1+2*x);
+                if (tile != 0) {
+                    print("[]",colour,add_v2(play_area_top_left,v2(1+2*x,1+y)));
                 }
             }
         }
@@ -396,34 +378,65 @@
 
     void draw_indicators() {
         if (paused) {
-            if (ascii_mode) {
-                printc(paused_indicator_ascii,paused_indicator_ascii_colour,paused_indicator_ascii_pos[1],paused_indicator_ascii_pos[0]);
-            } else {
-                printc(paused_indicator,paused_indicator_colour,paused_indicator_pos[1],paused_indicator_pos[0]);
-            }
+            printc(paused_indicator,paused_indicator_colour,paused_indicator_pos);
         }
         if (collision_bug_occured) {
-            if (ascii_mode) {
-                print(collision_bug_indicator_ascii,collision_bug_indicator_ascii_colour,collision_bug_indicator_ascii_pos[1],collision_bug_indicator_ascii_pos[0]);
-            } else {
-                print(collision_bug_indicator,collision_bug_indicator_colour,collision_bug_indicator_pos[1],collision_bug_indicator_pos[0]);
-            }
+            printc(collision_bug_indicator,collision_bug_indicator_colour,collision_bug_indicator_pos);
         }
+    }
+
+    void draw_stats() {
+        // Center text to box - Level
+        char lvl_str[4];
+        itoa(lvl,lvl_str,10);
+        unsigned int len = get_string_length(lvl_str);
+        unsigned int offset = 0;
+        switch (len) {
+            case 1: offset = 1; break;
+            case 2: offset = 0; break;
+            case 3: offset = 0; break;
+        }
+        print(lvl_str,stat_colour,add_v2(stat_lvl_top_left,v2(4+offset,3)));
+        // Center text to box - Lines
+        char lines_str[4];
+        itoa(total_lines_cleared,lines_str,10);
+        len = get_string_length(lines_str);
+        offset = 0;
+        switch (len) {
+            case 1: offset = 1; break;
+            case 2: offset = 0; break;
+            case 3: offset = 0; break;
+            case 4: offset = 0; break;
+        }
+        print(lines_str,stat_colour,add_v2(stat_lines_top_left,v2(4+offset,3)));
+        // Center text to box - Score
+        char score_str[4];
+        itoa(score,score_str,10);
+        len = get_string_length(score_str);
+        offset = 0;
+        switch (len) {
+            case 1: offset = 2; break;
+            case 2: offset = 1; break;
+            case 3: offset = 1; break;
+            case 4: offset = 0; break;
+            case 5: offset = 0; break;
+            case 6: offset = 0; break;
+        }
+        print(score_str,stat_colour,add_v2(stat_score_top_left,v2(3+offset,3)));
     }
 
 // Bag
     void refil_bag() {
-        // Placeholder code, replace once randomness is sorted
-        unsigned int new_bag[7] = {1,2,3,4,5,6,7};
-        for (unsigned int i = 0; i < 7; i++) {
-            bag[i] = new_bag[i];
+        // Placeholder code, this should be replaced once randomness is sorted
+        for (unsigned int i = 0; i < total_shapes; i++) {
+            bag[i] = i+1;
         }
     }
     enum ShapeID take_from_bag() {
         // Test if bag is empty
         unsigned int i;
         bool bag_empty = true;
-        for (i = 0; i < 7; i++) {
+        for (i = 0; i < total_shapes; i++) {
             if (bag[i] != 0) {
                 bag_empty = false;
                 break;
@@ -434,18 +447,9 @@
             refil_bag();
         }
         // Find the first shape left in the bag, remove it from the bag, and return it
-        for (i = 0; i < 7; i++) {
+        for (i = 0; i < total_shapes; i++) {
             if (bag[i] != 0) {
-                enum ShapeID selected;
-                switch(bag[i]) {
-                    case 1: selected = o; break;
-                    case 2: selected = i; break;
-                    case 3: selected = l; break;
-                    case 4: selected = j; break;
-                    case 5: selected = s; break;
-                    case 6: selected = z; break;
-                    case 7: selected = t; break;
-                }
+                enum ShapeID selected = bag[i]-1;
                 bag[i] = 0;
                 return selected;
             }
@@ -455,16 +459,16 @@
 // Game logic functions
 bool shape_illegalities[5];
 bool shape_illegal = false;
-void calc_shape_illegality(enum ShapeID shape, int rot, int cx, int cy) {
-    // Calculate the relative points
-    calc_shape_points(shape,rot);
+void calc_shape_illegality(enum ShapeID shapeId, int rot, int cx, int cy) {
+    // Get the relative points
+    vec2 *shape_points = shapes[shapeId].rotations[rot];
     for (unsigned int i = 0; i < 5; i++) {
         shape_illegalities[i] = false;
     }
     for (unsigned int p = 0; p < 4; p++) {
         // Get tile x and y
-        int x = cx+shape_points[p][0];
-        int y = cy+shape_points[p][1];
+        int x = cx+shape_points[p].x;
+        int y = cy+shape_points[p].y;
         if (!shape_illegalities[0]) {
             shape_illegalities[0] = x < 0; // point out of bound (left)
         }
@@ -525,39 +529,58 @@ unsigned int check_line_clears() {
         total_lines_cleared += lines_cleared_amount;
         unsigned int old_level = lvl;
         // Update level
-        lvl = round(total_lines_cleared / 10);
+        lvl = floor(total_lines_cleared / lines_per_level);
         if (lvl != old_level) {
-            // Update gravity
-            if (lvl < 9) {
-                gravity -= 1.5;
-            } else if (lvl == 9) {
-                gravity -= 0.6;
-            } else if (lvl == 10 || lvl == 13 || lvl == 16 || lvl == 19 || lvl == 29) {
-                gravity -= 0.3;
+            // Progress gravity
+            for (unsigned int i = 0; i < total_gravity_progression_levels; i++) {
+                GravityProgressionLevel p = gravity_progression[i];
+                bool progressed = false;
+                for (unsigned int ii = 0; ii < p.levelsSize; ii++) {
+                    if (lvl == p.levels[ii]) {
+                        progressed = true;
+                        gravity -= p.amount;
+                        break;
+                    }
+                }
+                if (progressed) {
+                    break;
+                }
             }
         }
         // Update score
-        score += round(lines_cleared_amount / 4)*(1200*(lvl+1)); // tetrises
-        score += round((lines_cleared_amount % 4) / 3)*(300*(lvl+1)); // triples
-        score += round(((lines_cleared_amount % 4) % 3) / 2)*(100*(lvl+1)); // doubles
-        score += (((lines_cleared_amount % 4) % 3) % 2)*(40*(lvl+1)); // singles
+        unsigned int handled_lines = 0;
+        while (handled_lines < lines_cleared_amount) {
+            if (lines_cleared_amount-handled_lines >= 4) {
+                score += score_add_tetris*(lvl+1);
+                handled_lines += 4;
+            } else if (lines_cleared_amount-handled_lines >= 3) {
+                score += score_add_triple*(lvl+1);
+                handled_lines += 3;
+            } else if (lines_cleared_amount-handled_lines >= 2) {
+                score += score_add_double*(lvl+1);
+                handled_lines += 2;
+            } else if (lines_cleared_amount-handled_lines >= 1) {
+                score += score_add_single*(lvl+1);
+                handled_lines++;
+            }
+        }
     }
     return lines_cleared_amount;
 }
 
 void stamp() {
-    // Calculate the relative points
-    calc_shape_points(current_shape,current_shape_rot);
+    // Get the relative points
+    vec2 *shape_points = shapes[current_shape].rotations[current_shape_rot];
     for (unsigned int p = 0; p < 4; p++) {
         // Plot the point onto the tilemap
-        tilemap[current_shape_y+shape_points[p][1]][current_shape_x+shape_points[p][0]] = ((int)current_shape)+1;
+        tilemap[current_shape_y+shape_points[p].y][current_shape_x+shape_points[p].x] = ((int)current_shape)+1;
     }
     // Test for line clears
     unsigned int lines_cleared_amount = check_line_clears();
     // Get new shape if no lines cleared, if there is, the new shape will be assigned once the lines stop flashing
     if (lines_cleared_amount == 0) {
-        current_shape_x = spawn_x;
-        current_shape_y = spawn_y;
+        current_shape_x = spawn_pos.x;
+        current_shape_y = spawn_pos.y;
         current_shape_rot = spawn_rot;
         current_shape = next_shape;
         next_shape = take_from_bag();
@@ -576,10 +599,10 @@ void reset() {
     lvl = 0;
     collision_bug_occured = false;
     clear_tilemap();
-    current_shape_x = spawn_x;
-    current_shape_y = spawn_y;
+    current_shape_x = spawn_pos.x;
+    current_shape_y = spawn_pos.y;
     current_shape_rot = spawn_rot;
-    gravity = start_gravity;
+    gravity = gravity_progression[0].amount;
     refil_bag();
     current_shape = take_from_bag();
     next_shape = take_from_bag();
@@ -600,15 +623,29 @@ void main_loop() {
         }
     }
 
+    // Max stats
+    if (lvl > 999) {
+        lvl = 999;
+    }
+    if (total_lines_cleared > 9999) {
+        total_lines_cleared = 9999;
+    }
+    if (score > 999999) {
+        score = 999999;
+    }
+
     // Display
-    print("Welcome to TetrOS!",WHITE,1,40-9);
+    printc(title_message,title_message_colour,title_message_pos);
     draw_boxes_and_grid();
     draw_stamped_shapes();
     calc_ghost_y();
-    draw_ghost_shape();
+    if (show_ghost) {
+        draw_ghost_shape();
+    }
     draw_current_shape();
     draw_next_shape();
     draw_held_shape();
+    draw_stats();
     draw_indicators();
 }
 
@@ -652,8 +689,8 @@ void tick_handler() {
                 // Pause gravity of current shape
                 anti_gravity_tick = round(gravity);
                 // Spawn the new shape
-                current_shape_x = spawn_x;
-                current_shape_y = spawn_y;
+                current_shape_x = spawn_pos.x;
+                current_shape_y = spawn_pos.y;
                 current_shape_rot = spawn_rot;
                 current_shape = next_shape;
                 next_shape = take_from_bag();
@@ -696,7 +733,7 @@ void key_handler() {
     // Don't allow input if paused, or lines are clearing, and ignore the "key up" keycode
     if (!paused && lc_tick == 0 && keycode != 224) {
         switch(keycode) {
-            case 0x4B: // left arrow (move left)
+            case K_left:
                 // Move shape left
                 current_shape_x--;
                 // If the shape goes out of bounds, move it back in
@@ -705,7 +742,7 @@ void key_handler() {
                     current_shape_x++;
                 }
                 break;
-            case 0x4D: // right arrow (move right)
+            case K_right:
                 // Move shape right
                 current_shape_x++;
                 // If the shape goes out of bounds, move it back in
@@ -714,7 +751,7 @@ void key_handler() {
                     current_shape_x--;
                 }
                 break;
-            case 0x50: // down arrow (soft drop)
+            case K_soft_drop:
                 // Move shape down
                 current_shape_y++;
                 // If the shape goes out of bounds, move it back in
@@ -722,16 +759,26 @@ void key_handler() {
                 if (shape_illegal) {
                     current_shape_y--;
                 } else {
-                    anti_gravity_tick = round(gravity);
+                    // If touching floor, allow slide time, else use anti gravity
+                    current_shape_y++;
+                    calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
+                    current_shape_y--;
+                    if (shape_illegal) {
+                        anti_gravity_tick = round(18*slide_time);
+                    } else {
+                        anti_gravity_tick = round(gravity);
+                    }
+                    score += score_add_soft_drop;
                 }
                 break;
-            case 0x39: // space (hard drop)
+            case K_hard_drop:
                 calc_ghost_y();
+                score += score_add_hard_drop*(ghost_shape_y-current_shape_y);
                 current_shape_y = ghost_shape_y;
                 stamp();
                 break;
-            case 0x48: // up arrow (rotate right)
-            case 0x2D: // x (rotate right)
+            case K_rotate_right1:
+            case K_rotate_right2:
                 // Rotate shape right
                 current_shape_rot++;
                 // Clip rotation to range 1-4
@@ -747,7 +794,7 @@ void key_handler() {
                     }
                 }
                 break;
-            case 0x2C: // z (rotate left)
+            case K_rotate_left:
                 // Rotate shape left
                 current_shape_rot--;
                 // Clip rotation to range 1-4
@@ -763,7 +810,7 @@ void key_handler() {
                     }
                 }
                 break;
-            case 0x2E: // c (hold)
+            case K_hold:
                 // Don't let the player hold more than once per turn
                 if (!held_this_turn) {
                     // If no shape is currently held, hold the current shape and generate a new next shape, else swap the held shape and current shape
@@ -777,8 +824,8 @@ void key_handler() {
                         held_shape = temp_shape;
                     }
                     // Set the spawn position and rotation of the new current shape
-                    current_shape_x = spawn_x;
-                    current_shape_y = spawn_y;
+                    current_shape_x = spawn_pos.x;
+                    current_shape_y = spawn_pos.y;
                     current_shape_rot = 0;
                     // If the shape spawns illegaly, end the game
                     calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
@@ -789,16 +836,27 @@ void key_handler() {
                     held_this_turn = true;
                 }
                 break;
-            case 0x13: // r (reset)
+            case K_reset:
                 reset();
                 break;
         }
     }
-    if (keycode == 0x01) { // esc (toggle pause)
+    if (keycode == K_toggle_pause) {
         paused = !paused;
     }
-    if (keycode == 0x3B) { // f1 (toggle ascii)
+    if (keycode == K_toggle_ascii) {
         ascii_mode = !ascii_mode;
+    }
+    if (keycode == K_toggle_ghost) {
+        show_ghost = !show_ghost;
+    }
+    if (keycode == K_toggle_wall_kicks) {
+        do_wall_kicks = !do_wall_kicks;
+    }
+    if (keycode == K_reset_settings) {
+        ascii_mode = default_ascii_mode;
+        show_ghost = default_show_ghost;
+        do_wall_kicks = default_do_wall_kicks;
     }
 
     outb(0x20, 0x20);
