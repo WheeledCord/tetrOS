@@ -10,7 +10,7 @@
 #define null 0
 
 // Shapes
-enum Shape {
+enum ShapeID {
     o,
     i,
     l,
@@ -20,5 +20,12 @@ enum Shape {
     t,
     unset
 };
+
+struct Shape {
+    char color_bg;
+    char color_fg;
+    int data[4][4][4];
+};
+
 
 #endif

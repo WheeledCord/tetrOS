@@ -9,17 +9,18 @@
     unsigned int anti_gravity_tick = 0;
 
 // Game Variables
-    int current_shape_x,current_shape_y,current_shape_rot;
+    int current_shape_x,current_shape_y,ghost_shape_y,current_shape_rot;
     unsigned int bag[7];
-    enum Shape next_shape;
-    enum Shape held_shape;
-    enum Shape current_shape;
+    enum ShapeID next_shape;
+    enum ShapeID held_shape;
+    enum ShapeID current_shape;
 
     unsigned int score = 0, lvl = 0, total_lines_cleared = 0;
     float gravity;
 
     bool collision_bug_occured = false;
     bool game_over = false;
+    bool held_this_turn = false;
 
 // Game Settings
     bool ascii_mode = default_ascii_mode; 
@@ -37,18 +38,9 @@
 
 // Points
     int shape_points[4][2];
-    void calc_shape_points(enum Shape shape, int rot) {
-        // Select which rotation to take points from
-        int (*r)[4];
-        switch(shape) {
-            case o: r = shape_o[rot]; break;
-            case i: r = shape_i[rot]; break;
-            case l: r = shape_l[rot]; break;
-            case j: r = shape_j[rot]; break;
-            case s: r = shape_s[rot]; break;
-            case z: r = shape_z[rot]; break;
-            case t: r = shape_t[rot]; break;
-        }
+    void calc_shape_points(enum ShapeID shape, int rot) {
+        // Get points data
+        int r[4][4] = shapes[shape].data[rot];
         // Plot points to new list, and determine center positions
         int cx = 0, cy = 0;
         int points[4][2] = {{0,0},{0,0},{0,0},{0,0}};
@@ -291,6 +283,25 @@
         }
     }
 
+    void draw_ghost_shape() {
+        // Don't draw anything if clearing line
+        if (lc_tick == 0) {
+            // Calculate the relative points
+            calc_shape_points(current_shape,current_shape_rot);
+            for (unsigned int p = 0; p < 4; p++) {
+                // If in ascii mode, only colour foreground, else colour both background and foreground
+                char colour;
+                if (ascii_mode) {
+                    colour = GRAY;
+                } else {
+                    colour = colour_combo(GRAY,WHITE);
+                }
+                // Plot the point onto the grid
+                print("[]",colour,top_margin+1+ghost_shape_y+shape_points[p][1],left_margin+1+2*(current_shape_x+shape_points[p][0]));
+            }
+        }
+    }
+
     void draw_next_shape() {
         // Calculate the relative points for the default rotation
         calc_shape_points(next_shape,0);
@@ -408,7 +419,7 @@
             bag[i] = new_bag[i];
         }
     }
-    enum Shape take_from_bag() {
+    enum ShapeID take_from_bag() {
         // Test if bag is empty
         unsigned int i;
         bool bag_empty = true;
@@ -425,7 +436,7 @@
         // Find the first shape left in the bag, remove it from the bag, and return it
         for (i = 0; i < 7; i++) {
             if (bag[i] != 0) {
-                enum Shape selected;
+                enum ShapeID selected;
                 switch(bag[i]) {
                     case 1: selected = o; break;
                     case 2: selected = i; break;
@@ -444,7 +455,7 @@
 // Game logic functions
 bool shape_illegalities[5];
 bool shape_illegal = false;
-void calc_shape_illegality(enum Shape shape, int rot, int cx, int cy) {
+void calc_shape_illegality(enum ShapeID shape, int rot, int cx, int cy) {
     // Calculate the relative points
     calc_shape_points(shape,rot);
     for (unsigned int i = 0; i < 5; i++) {
@@ -477,6 +488,16 @@ void calc_shape_illegality(enum Shape shape, int rot, int cx, int cy) {
             break;
         }
     }
+}
+
+int calc_ghost_y() {
+    ghost_shape_y = current_shape_y;
+    shape_illegal = false;
+    while (!shape_illegal) {
+        ghost_shape_y++;
+        calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,ghost_shape_y);
+    }
+    ghost_shape_y--;
 }
 
 bool lines_cleared[grid_height];
@@ -545,6 +566,8 @@ void stamp() {
             game_over = true;
         }
     }
+    // Allow holding on new turn
+    held_this_turn = false;
 }
 
 void reset() {
@@ -561,10 +584,15 @@ void reset() {
     current_shape = take_from_bag();
     next_shape = take_from_bag();
     held_shape = unset;
+    held_this_turn = false;
+    game_over = false;
 }
 
 void main_loop() {
     // Game logic
+    if (game_over) {
+        reset();
+    }
     if (lc_tick == 0) {
         calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
         if (shape_illegal) {
@@ -576,6 +604,8 @@ void main_loop() {
     print("Welcome to TetrOS!",WHITE,1,40-9);
     draw_boxes_and_grid();
     draw_stamped_shapes();
+    calc_ghost_y();
+    draw_ghost_shape();
     draw_current_shape();
     draw_next_shape();
     draw_held_shape();
@@ -696,6 +726,9 @@ void key_handler() {
                 }
                 break;
             case 0x39: // space (hard drop)
+                calc_ghost_y();
+                current_shape_y = ghost_shape_y;
+                stamp();
                 break;
             case 0x48: // up arrow (rotate right)
             case 0x2D: // x (rotate right)
@@ -731,24 +764,29 @@ void key_handler() {
                 }
                 break;
             case 0x2E: // c (hold)
-                // If no shape is currently held, hold the current shape and generate a new next shape, else swap the held shape and current shape
-                if (held_shape == unset) {
-                    held_shape = current_shape;
-                    current_shape = next_shape;
-                    next_shape = take_from_bag();
-                } else {
-                    enum Shape temp_shape = current_shape;
-                    current_shape = held_shape;
-                    held_shape = temp_shape;
-                }
-                // Set the spawn position and rotation of the new current shape
-                current_shape_x = spawn_x;
-                current_shape_y = spawn_y;
-                current_shape_rot = 0;
-                // If the shape spawns illegaly, end the game
-                calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
-                if (shape_illegal) {
-                    game_over = true;
+                // Don't let the player hold more than once per turn
+                if (!held_this_turn) {
+                    // If no shape is currently held, hold the current shape and generate a new next shape, else swap the held shape and current shape
+                    if (held_shape == unset) {
+                        held_shape = current_shape;
+                        current_shape = next_shape;
+                        next_shape = take_from_bag();
+                    } else {
+                        enum ShapeID temp_shape = current_shape;
+                        current_shape = held_shape;
+                        held_shape = temp_shape;
+                    }
+                    // Set the spawn position and rotation of the new current shape
+                    current_shape_x = spawn_x;
+                    current_shape_y = spawn_y;
+                    current_shape_rot = 0;
+                    // If the shape spawns illegaly, end the game
+                    calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
+                    if (shape_illegal) {
+                        game_over = true;
+                    }
+                    // Don't let the player hold more than once per turn
+                    held_this_turn = true;
                 }
                 break;
             case 0x13: // r (reset)
