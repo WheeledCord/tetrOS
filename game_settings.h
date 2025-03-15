@@ -24,7 +24,7 @@
         char next_label[] = "  NEXT: ";
         char held_label[] = "  HELD: ";
         char lvl_label[] = "   LVL:  ";
-        char lines_label[] = "  LINES: ";
+        char lines_label[] = "  LINES: "; 
         char score_label[] = "  SCORE: ";
         char stat_colour = WHITE;
 

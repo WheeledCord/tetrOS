@@ -6,7 +6,10 @@
 // Ticks
     unsigned int tick = 0;
     unsigned int lc_tick = 0;
+    unsigned int lc_start_tick = 0;
     unsigned int anti_gravity_tick = 0;
+    unsigned int anti_gravity_slide_tick = 0;
+    unsigned int gravity_start_tick = 0;
 
 // Game Variables
     int current_shape_x,current_shape_y,ghost_shape_y,current_shape_rot;
@@ -570,6 +573,7 @@ unsigned int check_line_clears() {
     if (lines_cleared_amount > 0) {
         // Start flashing lines
         lc_tick = 2*lc_flashes;
+        lc_start_tick = tick;
         // Update total lines cleared counter
         total_lines_cleared += lines_cleared_amount;
         unsigned int old_level = lvl;
@@ -702,7 +706,7 @@ void tick_handler() {
     if (!paused) {
         // Handle line clear flashing
         // The second condition of this if statement should be replaced, as currently it waits for the next tick that matches, creating inconsistency in when the flashes start
-        if (lc_tick > 0 && tick % round(18*lc_flash_duration) == 0) {
+        if (lc_tick > 0 && (tick-lc_start_tick) % round(18*lc_flash_duration) == 0) {
             for (unsigned int y = 0; y < grid_height; y++) {
                 // Only adjust if the line was cleared
                 if (lines_cleared[y]) {
@@ -754,8 +758,21 @@ void tick_handler() {
             if (anti_gravity_tick > 0) {
                 anti_gravity_tick--;
             }
+            // Allow for sliding ONLY WHEN the shape is on solid ground
+            if (anti_gravity_slide_tick > 0) {
+                // Check if on solid ground
+                current_shape_y++;
+                calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
+                current_shape_y--;
+                if (!shape_illegal) {
+                    // Stop slidng
+                    anti_gravity_slide_tick = 0;
+                } else {
+                    anti_gravity_slide_tick--;
+                }
+            }
             // The second condition of this if statement should be replaced, as currently it waits for the next tick that matches, creating inconsistency in anti-gravity length
-            if (anti_gravity_tick == 0 && tick % round(gravity) == 0) {
+            if (anti_gravity_tick == 0 && anti_gravity_slide_tick == 0 && (tick-gravity_start_tick) % round(gravity) == 0) {
                 // Lower the shape
                 current_shape_y++;
                 // If the shape goes out of bounds, move it back in
@@ -763,7 +780,16 @@ void tick_handler() {
                 if (shape_illegal) {
                     current_shape_y--;
                     stamp();
+                } else {
+                    // Check if should slide
+                    current_shape_y++;
+                    calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
+                    current_shape_y--;
+                    if (shape_illegal) {
+                        anti_gravity_slide_tick = round(18*slide_time);
+                    }
                 }
+                gravity_start_tick = tick;
             }
         }
     }
@@ -811,7 +837,7 @@ void key_handler() {
                     calc_shape_illegality(current_shape,current_shape_rot,current_shape_x,current_shape_y);
                     current_shape_y--;
                     if (shape_illegal) {
-                        anti_gravity_tick = round(18*slide_time);
+                        anti_gravity_slide_tick = round(18*slide_time);
                     } else {
                         anti_gravity_tick = round(gravity);
                     }

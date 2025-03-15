@@ -10,63 +10,22 @@
 #define null 0
 
 // Vector2
-struct vec2 {
-    int x;
-    int y;
-};
-typedef struct vec2 vec2;
-vec2 v2(int x, int y) {
-    vec2 out = {x,y};
-    return out;
-}
-vec2 add_v2(vec2 a, vec2 b) {
-    vec2 out = a;
-    out.x += b.x;
-    out.y += b.y;
-    return out;
-}
-vec2 sub_v2(vec2 a, vec2 b) {
-    vec2 out = a;
-    out.x -= b.x;
-    out.y -= b.y;
-    return out;
-}
-vec2 mult_v2(vec2 a, vec2 b) {
-    vec2 out = a;
-    out.x *= b.x;
-    out.y *= b.y;
-    return out;
-}
-vec2 div_v2(vec2 a, vec2 b) {
-    vec2 out = a;
-    out.x /= b.x;
-    out.y /= b.y;
-    return out;
-}
+#pragma region 
+    struct vec2 { int x,y; }; typedef struct vec2 vec2;
+    vec2 v2(int x, int y) { vec2 out = {x,y}; return out; }
+    vec2 add_v2(vec2 a, vec2 b) { vec2 out = a; out.x += b.x; out.y += b.y; return out; }
+    vec2 sub_v2(vec2 a, vec2 b) { vec2 out = a; out.x -= b.x; out.y -= b.y; return out; }
+    vec2 mult_v2(vec2 a, vec2 b) { vec2 out = a; out.x *= b.x; out.y *= b.y; return out; }
+    vec2 div_v2(vec2 a, vec2 b) { vec2 out = a; out.x /= b.x; out.y /= b.y; return out; }
+#pragma endregion 
 
-struct Shape {
-    char bg;
-    char fg;
-    vec2 ui_offset;
-    vec2 rotations[4][4];
-};
-typedef struct Shape Shape;
+// Shape
+struct Shape { char bg,fg; vec2 ui_offset; vec2 rotations[4][4]; }; typedef struct Shape Shape;
 
-struct GravityProgressionLevel {
-    float amount;
-    unsigned int levelsSize;
-    unsigned int levels[8];
-};
-typedef struct GravityProgressionLevel GravityProgressionLevel;
+// GravityProgressionLevel
+struct GravityProgressionLevel { float amount; unsigned int levelsSize; unsigned int levels[8]; }; typedef struct GravityProgressionLevel GravityProgressionLevel;
 
-struct Time {
-    int sec;
-    int min;
-    int hour;
-    int day;
-    int month;
-    int year;
-};
-typedef struct Time Time;
+// Time
+struct Time { int sec,min,hour,day,month,year; }; typedef struct Time Time;
 
 #endif
