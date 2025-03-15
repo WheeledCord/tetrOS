@@ -435,8 +435,7 @@
         leading_zero_adder(time.day,2,day);
         leading_zero_adder(time.month,2,month);
         leading_zero_adder(time.year-2000,2,year);
-        char **format_args = {"se","mi","ho","da","mo","ye"};
-        format_str(time_str,time_message,6,format_args);
+        format_str(time_str,time_message,6,"se","mi","ho","da","mo","ye");
         print(time_str,time_colour,time_pos);
         print(time_message,time_colour,add_v2(time_pos,v2(0,1)));
     }

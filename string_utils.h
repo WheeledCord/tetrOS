@@ -182,7 +182,7 @@ void debug_print(char string[],unsigned int y) {
     }
 }
 
-void format_str(char *to, char *string, unsigned int arg_count, char **args) {
+void format_str(char *to, char *string, unsigned int arg_count, ...) {
     char **args = (char **)(&string+1);
     unsigned int max_arg_length = 0;
     for (unsigned int i = 0; i < arg_count; i++) {
