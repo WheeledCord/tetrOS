@@ -1,7 +1,5 @@
 #include "game_settings.h"
-#include "classes.h"
 #include "kernel.h"
-#include "math.h"
 
 // Ticks
     unsigned int tick = 0;
@@ -429,30 +427,18 @@
     }
 
     void draw_time() {
-        // Hour
-        char hour_str[3];
-        leading_zero_adder(time.hour,2,hour_str);
-        print(hour_str,time_colour,add_v2(time_pos,v2(0,0)));
-        print(":",time_colour,add_v2(time_pos,v2(2,0)));
-        // Minute
-        char min_str[3];
-        leading_zero_adder(time.min,2,min_str);
-        print(min_str,time_colour,add_v2(time_pos,v2(3,0)));
-        print("-",time_colour,add_v2(time_pos,v2(6,0)));
-        // Day
-        char day_str[3];
-        leading_zero_adder(time.day,2,day_str);
-        print(day_str,time_colour,add_v2(time_pos,v2(8,0)));
-        print("/",time_colour,add_v2(time_pos,v2(10,0)));
-        // Month
-        char month_str[3];
-        leading_zero_adder(time.month,2,month_str);
-        print(month_str,time_colour,add_v2(time_pos,v2(11,0)));
-        print("/",time_colour,add_v2(time_pos,v2(13,0)));
-        // Year
-        char year_str[3];
-        leading_zero_adder(time.year-2000,2,year_str);
-        print(year_str,time_colour,add_v2(time_pos,v2(14,0)));
+        char time_str[get_str_length(time_message)];
+        char *sec,*min,*hour,*day,*month,*year;
+        leading_zero_adder(time.sec,2,sec);
+        leading_zero_adder(time.min,2,min);
+        leading_zero_adder(time.hour,2,hour);
+        leading_zero_adder(time.day,2,day);
+        leading_zero_adder(time.month,2,month);
+        leading_zero_adder(time.year-2000,2,year);
+        char **format_args = {"se","mi","ho","da","mo","ye"};
+        format_str(time_str,time_message,6,format_args);
+        print(time_str,time_colour,time_pos);
+        print(time_message,time_colour,add_v2(time_pos,v2(0,1)));
     }
 
 // Bag

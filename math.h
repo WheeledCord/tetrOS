@@ -7,5 +7,12 @@ int round(float n) {
 int floor(float n) {
     return (int) n;
 }
+int power_of(int n, int x) {
+    int out = 1;
+    for (unsigned int i = 0; i < x; i++) {
+        out *= n;
+    }
+    return out;
+}
 
 #endif

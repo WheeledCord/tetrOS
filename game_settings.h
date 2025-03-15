@@ -52,6 +52,7 @@
     vec2 title_message_pos = {31,1};
 
     // Time
+    char time_message[] = "%2% :%1%  (%0% ) - %3% /%4% /%5% ";
     char time_colour = WHITE;
     vec2 time_pos = {0,0};
 

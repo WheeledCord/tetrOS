@@ -1,4 +1,5 @@
 #include "os_utils.h"
+#include "string_utils.h"
 #include "colours.h"
 #include "classes.h"
 #ifndef KERNEL_H
@@ -90,6 +91,29 @@ void printi(int i, char colour, vec2 pos) {
     }
 }
 
+void printb(bool b, char colour, vec2 pos) {
+    int x = pos.x;
+    if (x < 0) { x = 0; }
+    int y = pos.y;
+    if (y < 0) { y = 0; }
+    char *string = "aaaaa";
+    if (b) {
+        set_str(string,"true");
+    } else {
+        set_str(string,"false");
+    }
+    while (*string) {
+        if (*string == '\n') {
+            y++;
+            x = 0;
+            string++;
+        } else {
+            screen_lines[0][y][x] = *string++;
+            screen_lines[1][y][x++] = colour;
+        }
+    }
+}
+
 char __printc_switch(char c) {
     switch(c) {
         case '1': return GRAY; break;
@@ -109,56 +133,6 @@ char __printc_switch(char c) {
         case 'F': return LIGHT_PURPLE; break;
         case '-': return ' '; break;
         default: return BLACK; break;
-    }
-}
-unsigned int get_str_length(char *string) {
-    unsigned int string_length = 0;
-    while(*string) {
-        string++;
-        string_length++;
-    }
-    for(unsigned int i = 0; i < string_length; i++) {
-        string--;
-    }
-    return string_length;
-}
-unsigned int get_int_length(int v) {
-    unsigned int string_length = 0;
-    char *string = "";
-    itoa(v,string,10);
-    return get_str_length(string);
-}
-void leading_zero_adder(int v, unsigned int desired_length, char *string) {
-    unsigned int len = get_int_length(v);
-    if (len < desired_length) {
-        for (unsigned int i = 0; i <= desired_length-1; i++) {
-            string[i] = '0';
-        }
-        char *int_string = "";
-        itoa(v,int_string,10);
-        unsigned int i = 0;
-        for (unsigned int ii = desired_length-1; ii > desired_length-len-1; ii--) {
-            string[ii] = int_string[i++];
-        }
-        string[desired_length] = 0x00;
-    } else {
-        itoa(v,string,10);
-    }
-}
-void slice_str(char *string,unsigned int start, unsigned int end) {
-    unsigned int len = get_str_length(string);
-    unsigned int new_len = (end+1)-start;
-    char out[new_len];
-    unsigned int i = 0;
-    for (unsigned int ii = start; ii <= end; ii++) {
-        out[i++] = string[ii];
-    }
-    for (unsigned int ii = 0; ii < len; ii++) {
-        if (ii <= new_len) {
-            string[ii] = out[ii];
-        } else {
-            string[ii] = 0x00;
-        }
     }
 }
 
@@ -190,6 +164,7 @@ void printc(char *string, char *colours, vec2 pos) {
     }
 }
 
+// Time
 int time_offset = 46800;
 int unix_time;
 Time time;
@@ -225,6 +200,7 @@ int read_time() {
     unix_to_rtc();
 }
 
+// Randomness
 #define RAND_MAX = 2147483647
 static unsigned long rand_state = 6783489;
 void srand(unsigned long seed) {
