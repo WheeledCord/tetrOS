@@ -39,7 +39,7 @@
     // Paused Indicator
     char paused_indicator[] = "PAUSED";
     char paused_indicator_colour[] = "222222";
-    vec2 paused_indicator_pos = {1,1};
+    vec2 paused_indicator_pos = {37,2};
 
     // Collision Bug Indicator
     char collision_bug_indicator[] = "There has been a collision bug!";
@@ -52,9 +52,9 @@
     vec2 title_message_pos = {31,1};
 
     // Time
-    char time_message[] = "%2% :%1%  (%0% ) - %3% /%4% /%5% ";
+    char time_message[] = "\%h:\%m (\%s) - \%d/\%M/\%y";
     char time_colour = WHITE;
-    vec2 time_pos = {0,0};
+    vec2 time_pos = {1,1};
 
     // Flashing
     unsigned int lc_flashes = 3;

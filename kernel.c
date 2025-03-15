@@ -389,7 +389,7 @@
     void draw_stats() {
         // Center text to box - Level
         char lvl_str[4];
-        itoa(lvl,lvl_str,10);
+        itoa(lvl_str,lvl,10);
         unsigned int len = get_str_length(lvl_str);
         unsigned int offset = 0;
         switch (len) {
@@ -400,7 +400,7 @@
         print(lvl_str,stat_colour,add_v2(stat_lvl_top_left,v2(4+offset,3)));
         // Center text to box - Lines
         char lines_str[4];
-        itoa(total_lines_cleared,lines_str,10);
+        itoa(lines_str,total_lines_cleared,10);
         len = get_str_length(lines_str);
         offset = 0;
         switch (len) {
@@ -412,7 +412,7 @@
         print(lines_str,stat_colour,add_v2(stat_lines_top_left,v2(4+offset,3)));
         // Center text to box - Score
         char score_str[4];
-        itoa(score,score_str,10);
+        itoa(score_str,score,10);
         len = get_str_length(score_str);
         offset = 0;
         switch (len) {
@@ -427,17 +427,22 @@
     }
 
     void draw_time() {
+        read_time();
         char time_str[get_str_length(time_message)];
-        char *sec,*min,*hour,*day,*month,*year;
-        leading_zero_adder(time.sec,2,sec);
-        leading_zero_adder(time.min,2,min);
-        leading_zero_adder(time.hour,2,hour);
-        leading_zero_adder(time.day,2,day);
-        leading_zero_adder(time.month,2,month);
-        leading_zero_adder(time.year-2000,2,year);
-        format_str(time_str,time_message,6,"se","mi","ho","da","mo","ye");
+        char time_piece[3];
+        leading_zero_adder(time_piece,time.sec,2);
+        str_replace(time_str,time_message,"\%s",time_piece);
+        leading_zero_adder(time_piece,time.min,2);
+        str_replace(time_str,time_str,"\%m",time_piece);
+        leading_zero_adder(time_piece,time.hour,2);
+        str_replace(time_str,time_str,"\%h",time_piece);
+        leading_zero_adder(time_piece,time.day,2);
+        str_replace(time_str,time_str,"\%d",time_piece);
+        leading_zero_adder(time_piece,time.month,2);
+        str_replace(time_str,time_str,"\%M",time_piece);
+        leading_zero_adder(time_piece,time.year-2000,2);
+        str_replace(time_str,time_str,"\%y",time_piece);
         print(time_str,time_colour,time_pos);
-        print(time_message,time_colour,add_v2(time_pos,v2(0,1)));
     }
 
 // Bag
@@ -685,7 +690,6 @@ void main_loop() {
 }
 
 void tick_handler() {
-    read_time();
     tick++;
     // Handle ticks (e.g. gravity or line clear flashing) if not paused
     if (!paused) {

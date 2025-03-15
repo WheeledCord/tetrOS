@@ -3,10 +3,10 @@
 #ifndef STRING_UTLS_H
 #define STRING_UTLS_H
 
-void itoa(int value, char *str, int base) {
-    char *rc = str, *ptr = str, *low;
+void itoa(char *to, int value, int base) {
+    char *rc = to, *ptr = to, *low;
     if (base < 2 || base > 36) {
-        *str = '\0';
+        *to = '\0';
         return;
     }
     if (value < 0 && base == 10) {
@@ -43,28 +43,20 @@ unsigned int get_str_length(char *string) {
     return string_length;
 }
 
-unsigned int get_int_length(int v) {
-    unsigned int string_length = 0;
-    char *string = "";
-    itoa(v,string,10);
-    return get_str_length(string);
-}
-
-void leading_zero_adder(int v, unsigned int desired_length, char *string) {
-    unsigned int len = get_int_length(v);
-    if (len < desired_length) {
-        for (unsigned int i = 0; i <= desired_length-1; i++) {
-            string[i] = '0';
-        }
-        char *int_string = "";
-        itoa(v,int_string,10);
-        unsigned int i = 0;
-        for (unsigned int ii = desired_length-1; ii > desired_length-len-1; ii--) {
-            string[ii] = int_string[i++];
-        }
-        string[desired_length] = '\0';
+void leading_zero_adder(char *to, int num, unsigned int desired_length) {
+    if (num >= power_of(10,desired_length-1)) {
+        itoa(to, num, 10);
     } else {
-        itoa(v,string,10);
+        char temp[get_str_length(to)];
+        itoa(temp, num, 10);
+        unsigned int zeros_to_add = desired_length - get_str_length(temp);
+        for (unsigned int i = 0; i < zeros_to_add; i++) {
+            to[i] = '0';
+        }
+        for (unsigned int i = 0; i < get_str_length(temp); i++) {
+            to[zeros_to_add + i] = temp[i];
+        }
+        to[desired_length] = '\0';
     }
 }
 
@@ -78,28 +70,22 @@ void set_str(char *to, char *from) {
 
 // end is inclusive
 void slice_str(char *to, char *string, unsigned int start, unsigned int end) {
-    // Handle invalid range
-    if (start >= get_str_length(string) || end >= get_str_length(string) || start > end) {
-        return;
-    }
-    char out[end-start+1];
     unsigned int i = 0;
     for (unsigned int ii = start; ii < end+1; ii++) {
-        out[i++] = string[ii];
+        to[i++] = string[ii];
     }
-    out[i] = '\0';
-    set_str(to,out);
+    to[i] = '\0';
 }
 
-void join_str(char *out, char *a, char *b) {
+void join_str(char *to, char *a, char *b) {
     unsigned int i = 0;
     for (unsigned int ii = 0; ii < get_str_length(a); ii++) {
-        out[i++] = a[ii];
+        to[i++] = a[ii];
     }
     for (unsigned int ii = 0; ii < get_str_length(b); ii++) {
-        out[i++] = b[ii];
+        to[i++] = b[ii];
     }
-    out[i] = '\0';
+    to[i] = '\0';
 }
 
 unsigned int str_count(char *string, char *sub) {
@@ -129,8 +115,22 @@ unsigned int str_count_c(char *string, char c) {
     return amount;
 }
 
+int str_find(char *string, char *sub, unsigned int start) {
+    unsigned int sub_i = 0;
+    for(unsigned int i = start; i < get_str_length(string); i++) {
+        if (string[i] == sub[sub_i]) {
+            sub_i++;
+        } else {
+            sub_i = 0;
+        }
+        if (sub_i == get_str_length(sub)) {
+            return i-(sub_i-1);
+        }
+    }
+    return -1;
+}
+
 int str_find_c(char *string, char c, unsigned int start) {
-    unsigned int amount = 0;
     for(unsigned int i = start; i < get_str_length(string); i++) {
         if (string[i] == c) {
             return i;
@@ -138,6 +138,36 @@ int str_find_c(char *string, char c, unsigned int start) {
     }
     return -1;
 }
+
+void str_replace(char *to, char *string, char *start, char *replace) {
+    char out[get_str_length(string)+1];
+    int index = str_find(string, start, 0);
+    unsigned int i = 0;
+    unsigned int last_index = 0;
+
+    if (index == -1) {
+        slice_str(out, string, 0, get_str_length(string) - 1);
+        set_str(to, out);
+        return;
+    }
+
+    while (index != -1) {
+        slice_str(out + i, string, last_index, index - 1);
+        i += index - last_index;
+
+        join_str(out + i, out + i, replace);
+        i += get_str_length(replace);
+
+        last_index = index + get_str_length(start);
+        index = str_find(string, start, last_index);
+    }
+
+    slice_str(out + i, string, last_index, get_str_length(string) - 1);
+
+    out[i + get_str_length(out)] = '\0';
+    set_str(to, out);
+}
+
 
 char digit_chars[] = "0123456789";
 int parse_int(char *str) {
@@ -180,47 +210,6 @@ void debug_print(char string[],unsigned int y) {
         vidmem[ii++] = *string++;
         vidmem[ii++] = WHITE;
     }
-}
-
-void format_str(char *to, char *string, unsigned int arg_count, ...) {
-    char **args = (char **)(&string+1);
-    unsigned int max_arg_length = 0;
-    for (unsigned int i = 0; i < arg_count; i++) {
-        unsigned int len = get_str_length(args[i]);
-        if (len > max_arg_length) {
-            max_arg_length = len;
-        }
-    }
-    unsigned int len = (floor(str_count_c(string,'%')/2)*max_arg_length)+get_str_length(string);
-    char out[len+1];
-
-    unsigned int dp = 0;
-
-    unsigned int i = 0;
-    for (unsigned int ii = 0; ii < get_str_length(string); ii++) {
-        char c = string[ii];
-        if (c == '%') {
-            bool valid = true;
-            unsigned int closing_index = str_find_c(string,'%',ii+1);
-            char index[4];
-            slice_str(index,string,ii+1,closing_index-1);
-            if (get_str_length(index) == 0) {
-                valid = false;
-            }
-            if (valid) {
-                char *arg = args[parse_int(index)];
-                dp++;
-                for (unsigned int iii = 0; iii < get_str_length(arg); iii++) {
-                    out[i++] = arg[iii];
-                }
-            }
-            ii = closing_index + 1;
-        } else {
-            out[i++] = c;
-        }
-    }
-    out[i] = '\0';
-    set_str(to,out);
 }
 
 #endif
