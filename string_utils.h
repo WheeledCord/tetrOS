@@ -209,8 +209,6 @@ void format_str(char *to, char *string, unsigned int arg_count, ...) {
             }
             if (valid) {
                 char *arg = args[parse_int(index)];
-                debug_printi(parse_int(index),5+(dp*2));
-                debug_print(arg,6+(dp*2));
                 dp++;
                 for (unsigned int iii = 0; iii < get_str_length(arg); iii++) {
                     out[i++] = arg[iii];
@@ -221,7 +219,6 @@ void format_str(char *to, char *string, unsigned int arg_count, ...) {
             out[i++] = c;
         }
     }
-    while(true);
     out[i] = '\0';
     set_str(to,out);
 }
