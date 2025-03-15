@@ -52,7 +52,7 @@
     vec2 title_message_pos = {31,1};
 
     // Time
-    char time_message[] = "\%h:\%m (\%s) - \%d/\%M/\%y";
+    char time_message[] = "\%h:\%m:\%s - \%d/\%M/\%y";
     char time_colour = WHITE;
     vec2 time_pos = {1,1};
 
