@@ -1,4 +1,4 @@
-#include "classes.h"
+#include "libs/classes.h"
 #include "colours.h"
 #ifndef GAME_SETTINGS_H
 #define GAME_SETTINGS_H
@@ -32,9 +32,9 @@
         vec2 play_area_top_left = {29,3};
         vec2 next_shape_top_left = {61,5};
         vec2 held_shape_top_left = {61,15};
-        vec2 stat_lvl_top_left = {8,4};
-        vec2 stat_lines_top_left = {8,11};
-        vec2 stat_score_top_left = {8,18};
+        vec2 stat_lvl_top_left = {8,5};
+        vec2 stat_lines_top_left = {8,12};
+        vec2 stat_score_top_left = {8,19};
 
     // Paused Indicator
     char paused_indicator[] = "PAUSED";
@@ -52,9 +52,13 @@
     vec2 title_message_pos = {31,1};
 
     // Time
-    char time_message[] = "\%h:\%m:\%s - \%d/\%M/\%y";
+    char time_message[] = "Time: \%h:\%m - \%d/\%M/\%y";
+    char round_time_message[] = "Round: \%h:\%m:\%s";
+    char session_time_message[] = "Total: \%h:\%m:\%s";
     char time_colour = WHITE;
     vec2 time_pos = {1,1};
+    vec2 round_time_pos = {1,2};
+    vec2 session_time_pos = {1,3};
 
     // Flashing
     unsigned int lc_flashes = 3;

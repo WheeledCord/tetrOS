@@ -1,7 +1,31 @@
 #include "math.h"
-#include "colours.h"
+#include "classes.h"
 #ifndef STRING_UTLS_H
 #define STRING_UTLS_H
+
+int count_digits(int n) {
+    int count = (n <= 0) ? 1 : 0;
+    while (n != 0) {
+        n /= 10;
+        count++;
+    }
+    return count;
+}
+
+int last_n_digits(int num, unsigned int n) {
+    int total_digits = count_digits(num);
+    
+    if (n >= total_digits) {
+        return num;
+    }
+
+    int divisor = 1;
+    for (unsigned int i = 0; i < total_digits - n; i++) {
+        divisor *= 10;
+    }
+
+    return num % divisor;
+}
 
 void itoa(char *to, int value, int base) {
     char *rc = to, *ptr = to, *low;
@@ -87,6 +111,14 @@ void join_str(char *to, char *a, char *b) {
     }
     to[i] = '\0';
 }
+void str_add_c(char *to, char *string, char c) {
+    unsigned int i = 0;
+    for (unsigned int ii = 0; ii < get_str_length(string); ii++) {
+        to[i++] = string[ii];
+    }
+    to[i++] = c;
+    to[i] = '\0';
+}
 
 unsigned int str_count(char *string, char *sub) {
     unsigned int amount = 0;
@@ -139,35 +171,34 @@ int str_find_c(char *string, char c, unsigned int start) {
     return -1;
 }
 
-void str_replace(char *to, char *string, char *start, char *replace) {
-    char out[get_str_length(string)+1];
-    int index = str_find(string, start, 0);
-    unsigned int i = 0;
-    unsigned int last_index = 0;
-
-    if (index == -1) {
-        slice_str(out, string, 0, get_str_length(string) - 1);
-        set_str(to, out);
-        return;
+void str_replace(char *to, char *original, char *from, char *rep) {
+    unsigned int orig_len = get_str_length(original);
+    unsigned int from_len = get_str_length(from);
+    unsigned int rep_len = get_str_length(rep);
+    unsigned int count = str_count(original, from);
+    unsigned int out_len = orig_len + count * (rep_len - from_len);
+    char out[out_len+1];
+    
+    unsigned int start_index = 0, i = 0;
+    while (start_index < orig_len) {
+        int found_at = str_find(original, from, start_index);
+        if (found_at == -1) {
+            while (start_index < orig_len) {
+                out[i++] = original[start_index++];
+            }
+            break;
+        }
+        while (start_index < found_at) {
+            out[i++] = original[start_index++];
+        }
+        for (unsigned int ii = 0; ii < rep_len; ii++) {
+            out[i++] = rep[ii];
+        }
+        start_index += from_len;
     }
-
-    while (index != -1) {
-        slice_str(out + i, string, last_index, index - 1);
-        i += index - last_index;
-
-        join_str(out + i, out + i, replace);
-        i += get_str_length(replace);
-
-        last_index = index + get_str_length(start);
-        index = str_find(string, start, last_index);
-    }
-
-    slice_str(out + i, string, last_index, get_str_length(string) - 1);
-
-    out[i + get_str_length(out)] = '\0';
+    out[i] = '\0';
     set_str(to, out);
 }
-
 
 char digit_chars[] = "0123456789";
 int parse_int(char *str) {
@@ -191,25 +222,6 @@ int parse_int(char *str) {
         result = -1*result;
     }
     return result;
-}
-
-void debug_printi(int i,unsigned int y) {
-    char *vidmem = (char *)0xB8000;
-    char *string = "";
-    itoa(i,string,10);
-    unsigned int ii = y * 80 * 2;
-    while (*string) {
-        vidmem[ii++] = *string++;
-        vidmem[ii++] = WHITE;
-    }
-}
-void debug_print(char string[],unsigned int y) {
-    char *vidmem = (char *)0xB8000;
-    unsigned int ii = y * 80 * 2;
-    while (*string) {
-        vidmem[ii++] = *string++;
-        vidmem[ii++] = WHITE;
-    }
 }
 
 #endif

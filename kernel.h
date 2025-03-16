@@ -1,10 +1,10 @@
-#include "os_utils.h"
-#include "string_utils.h"
+#include "libs/os_utils.h"
+#include "libs/string_utils.h"
+#include "libs/time_utils.h"
 #include "colours.h"
-#include "classes.h"
+#include "libs/classes.h"
 #ifndef KERNEL_H
 #define KERNEL_H
-
 
 // Screen utilities
 void disable_cursor() {
@@ -72,48 +72,20 @@ void print(char string[], char colour, vec2 pos) {
         }
     }
 }
-void printi(int i, char colour, vec2 pos) {
-    int x = pos.x;
-    if (x < 0) { x = 0; }
-    int y = pos.y;
-    if (y < 0) { y = 0; }
-    char *string = "";
-    itoa(i,string,10);
-    while (*string) {
-        if (*string == '\n') {
-            y++;
-            x = 0;
-            string++;
-        } else {
-            screen_lines[0][y][x] = *string++;
-            screen_lines[1][y][x++] = colour;
-        }
-    }
+void printi(int v, char colour, vec2 pos) {
+    char string[count_digits(v)+1];
+    itoa(string,v,10);
+    print(string,colour,pos);
 }
-
 void printb(bool b, char colour, vec2 pos) {
-    int x = pos.x;
-    if (x < 0) { x = 0; }
-    int y = pos.y;
-    if (y < 0) { y = 0; }
     char *string = "aaaaa";
     if (b) {
         set_str(string,"true");
     } else {
         set_str(string,"false");
     }
-    while (*string) {
-        if (*string == '\n') {
-            y++;
-            x = 0;
-            string++;
-        } else {
-            screen_lines[0][y][x] = *string++;
-            screen_lines[1][y][x++] = colour;
-        }
-    }
+    print(string,colour,pos);
 }
-
 char __printc_switch(char c) {
     switch(c) {
         case '1': return GRAY; break;
@@ -135,7 +107,6 @@ char __printc_switch(char c) {
         default: return BLACK; break;
     }
 }
-
 void printc(char *string, char *colours, vec2 pos) {
     int x = pos.x;
     if (x < 0) { x = 0; }
@@ -165,53 +136,25 @@ void printc(char *string, char *colours, vec2 pos) {
 }
 
 // Time
-int time_offset = 46800;
-int unix_time;
-Time time;
-void unix_to_rtc() {
-    int days = unix_time / 86400;
-    int rem = unix_time % 86400;
-    time.hour = rem / 3600;
-    rem %= 3600;
-    time.min = rem / 60;
-    time.sec = rem % 60;
-    time.year = 1970;
-    while (days >= 365) {
-        int leap = (time.year % 4 == 0) && (time.year % 100 != 0 || time.year % 400 == 0);
-        if (days < 365 + leap) break;
-        days -= 365 + leap;
-        (time.year)++;
-    }
-    int month_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-    if ((time.year % 4 == 0) && (time.year % 100 != 0 || time.year % 400 == 0)) {
-        month_days[1] = 29;
-    }
-    time.month = 0;
-    while (days >= month_days[time.month]) {
-        days -= month_days[time.month];
-        (time.month)++;
-    }
-    time.day = days + 1;
-    time.month += 1;
-}
-int read_time() {
-    unix_time = rtc_to_unix(bcd_to_bin(read_cmos(0x00)),bcd_to_bin(read_cmos(0x02)),bcd_to_bin(read_cmos(0x04)),bcd_to_bin(read_cmos(0x07)),bcd_to_bin(read_cmos(0x08)),bcd_to_bin(read_cmos(0x09))+2000);
-    unix_time += time_offset;
-    unix_to_rtc();
+Time read_time() {
+    return offset_time(get_cmos_time(),46800);
 }
 
-// Randomness
-#define RAND_MAX = 2147483647
-static unsigned long rand_state = 6783489;
-void srand(unsigned long seed) {
-    rand_state = seed;
-}
-long rand() {
-    rand_state = (rand_state * 1103515245 + 12345) % 2147483648;
-    return rand_state;
-}
-int randInt(int max) {
-    return rand() % max;
+char format_time_chars[6] = "smhdMy";
+void format_time(char *to, char *unformatted, Time time) {
+    char time_str[get_str_length(unformatted)+1];
+    set_str(time_str,unformatted);
+
+    int time_pieces[6] = {time.sec,time.min,time.hour,time.day,time.month,last_n_digits(time.year,2)};
+
+    char rep[3];
+    char rep_w[3];
+    for (unsigned int i = 0; i < 6; i++) {
+        str_add_c(rep,"\%",format_time_chars[i]);
+        leading_zero_adder(rep_w,time_pieces[i],2);
+        str_replace(time_str,time_str,rep,rep_w);
+    }
+    set_str(to,time_str);
 }
 
 #endif

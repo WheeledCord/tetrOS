@@ -9,6 +9,10 @@
     unsigned int anti_gravity_slide_tick = 0;
     unsigned int gravity_start_tick = 0;
 
+// Times
+    Time session_start;
+    Time round_start;
+
 // Game Variables
     int current_shape_x,current_shape_y,ghost_shape_y,current_shape_rot;
     unsigned int bag[total_shapes];
@@ -427,22 +431,20 @@
     }
 
     void draw_time() {
-        read_time();
-        char time_str[get_str_length(time_message)];
-        char time_piece[3];
-        leading_zero_adder(time_piece,time.sec,2);
-        str_replace(time_str,time_message,"\%s",time_piece);
-        leading_zero_adder(time_piece,time.min,2);
-        str_replace(time_str,time_str,"\%m",time_piece);
-        leading_zero_adder(time_piece,time.hour,2);
-        str_replace(time_str,time_str,"\%h",time_piece);
-        leading_zero_adder(time_piece,time.day,2);
-        str_replace(time_str,time_str,"\%d",time_piece);
-        leading_zero_adder(time_piece,time.month,2);
-        str_replace(time_str,time_str,"\%M",time_piece);
-        leading_zero_adder(time_piece,time.year-2000,2);
-        str_replace(time_str,time_str,"\%y",time_piece);
+        Time time = read_time();
+        char time_str[get_str_length(time_message)+1];
+        format_time(time_str,time_message,time);
         print(time_str,time_colour,time_pos);
+
+        char session_time_str[get_str_length(session_time_message)+1];
+        Time session_time = time_from_seconds(time.unix_time-session_start.unix_time);
+        format_time(session_time_str,session_time_message,session_time);
+        print(session_time_str,time_colour,session_time_pos);
+
+        char round_time_str[get_str_length(round_time_message)+1];
+        Time round_time = time_from_seconds(time.unix_time-round_start.unix_time);
+        format_time(round_time_str,round_time_message,round_time);
+        print(round_time_str,time_colour,round_time_pos);
     }
 
 // Bag
@@ -648,6 +650,7 @@ void reset() {
     held_shape = unset;
     held_this_turn = false;
     game_over = false;
+    round_start = read_time();
 }
 
 void main_loop() {
@@ -789,6 +792,7 @@ void tick_handler() {
 
     outb(0x20, 0x20);
 }
+
 void key_handler() {
     // Get keycode
     unsigned char keycode = inb(0x60);
@@ -929,8 +933,9 @@ void kernel_init() {
     outb(0x3C6, 0xFF);
 
     // Seed the random generator
-    read_time();
-    srand(unix_time);
+    session_start = read_time();
+    round_start = read_time();
+    srand(session_start.unix_time);
 
     // Set up display
     clear_screen();
