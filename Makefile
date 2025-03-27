@@ -29,7 +29,7 @@ $(KERNEL_BIN): $(ASM_OBJ) $(C_OBJ)
 iso: $(KERNEL_BIN)
 	mkdir -p $(BOOT_DIR)
 	cp $(KERNEL_BIN) $(KERNEL_DST)
-	grub-mkrescue -o kernel.iso $(ISO_DIR)
+	grub-mkrescue -o kernel.iso -V "TetrOS" $(ISO_DIR)
 
 clean:
 	rm -f $(ASM_OBJ) $(C_OBJ) $(KERNEL_BIN)
