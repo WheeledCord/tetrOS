@@ -1,52 +1,39 @@
-AS = nasm
-CC = i686-linux-musl-gcc
-LD = i686-linux-musl-ld
+NASM = nasm
+GCC = gcc
+LD = ld
 
-ASFLAGS = -f elf32
-CFLAGS = -ffreestanding -m32 -c -g
-LDFLAGS = -T linker.ld
+ARCH_FLAGS = -m32 -fno-stack-protector -g
 
-BOOTLOADER_SRC = bootloader.asm
-KERNEL_SRC = kernel.c
-BOOTLOADER_OBJ = bootloader.o
-KERNEL_OBJ = kernel.o
-KERNEL_BIN = kernel.elf
-ISO_NAME = tetros.iso
+ASM_SRC = bootloader.asm
+C_SRC = kernel.c
+ASM_OBJ = bootasm.o
+C_OBJ = kernelc.o
+KERNEL_BIN = kernel
+LINKER_SCRIPT = linker.ld
+
 ISO_DIR = iso
-BOOTLOADER_BIN = bootloader.bin
+BOOT_DIR = $(ISO_DIR)/boot
+KERNEL_DST = $(BOOT_DIR)/kernel
 
 all: $(KERNEL_BIN)
 
-$(BOOTLOADER_OBJ): $(BOOTLOADER_SRC)
-	$(AS) $(ASFLAGS) $< -o $@
+$(ASM_OBJ): $(ASM_SRC)
+	$(NASM) -f elf32 $(ASM_SRC) -o $(ASM_OBJ)
 
-$(KERNEL_OBJ): $(KERNEL_SRC) kernel.h
-	$(CC) $(CFLAGS) $< -o $@
+$(C_OBJ): $(C_SRC)
+	$(GCC) $(ARCH_FLAGS) -c $(C_SRC) -o $(C_OBJ)
 
-$(KERNEL_BIN): $(BOOTLOADER_OBJ) $(KERNEL_OBJ)
-	$(LD) $(LDFLAGS) -o $@ $^
+$(KERNEL_BIN): $(ASM_OBJ) $(C_OBJ)
+	$(LD) -m elf_i386 -T $(LINKER_SCRIPT) -o $(KERNEL_BIN) $(ASM_OBJ) $(C_OBJ)
 
-$(BOOTLOADER_BIN): $(BOOTLOADER_OBJ)
-	dd if=$(BOOTLOADER_OBJ) of=$@ bs=512 seek=4
-
-run: $(KERNEL_BIN)
-	qemu-system-i386 -kernel $(KERNEL_BIN)
-
-debug: $(KERNEL_BIN)
-	qemu-system-i386 -kernel $(KERNEL_BIN) -S -s
-
-iso: $(BOOTLOADER_BIN) $(KERNEL_BIN)
-	mkdir -p $(ISO_DIR)/boot/grub
-	cp $(BOOTLOADER_BIN) $(ISO_DIR)/boot/
-	cp $(KERNEL_BIN) $(ISO_DIR)/boot/
-	echo 'set timeout=0' > $(ISO_DIR)/boot/grub/grub.cfg
-	echo 'set default=0' >> $(ISO_DIR)/boot/grub/grub.cfg
-	echo 'menuentry "TetrOS" {' >> $(ISO_DIR)/boot/grub/grub.cfg
-	echo '  multiboot /boot/$(KERNEL_BIN)' >> $(ISO_DIR)/boot/grub/grub.cfg
-	echo '  boot' >> $(ISO_DIR)/boot/grub/grub.cfg
-	echo '}' >> $(ISO_DIR)/boot/grub/grub.cfg
-	grub-mkrescue -o $(ISO_NAME) $(ISO_DIR)
+iso: $(KERNEL_BIN)
+	mkdir -p $(BOOT_DIR)
+	cp $(KERNEL_BIN) $(KERNEL_DST)
+	grub-mkrescue -o kernel.iso $(ISO_DIR)
 
 clean:
-	rm -f $(BOOTLOADER_OBJ) $(KERNEL_OBJ) $(KERNEL_BIN) $(BOOTLOADER_BIN)
-	rm -rf $(ISO_DIR) $(ISO_NAME)
+	rm -f $(ASM_OBJ) $(C_OBJ) $(KERNEL_BIN)
+	rm -rf $(ISO_DIR)
+
+.PHONY: all clean iso
+
