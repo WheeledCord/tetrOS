@@ -70,7 +70,7 @@ void init_pic() {
 }
 void kernel_main() {
     clear_screen();
-    print_string("Welcome to My Kernel!\n");
+    print_string("Welcome to TetrOS!\n");
     init_pic();
     set_idt_gate(0x21, (unsigned int)keyboard_interrupt_wrapper);
     idt_reg.limit = sizeof(idt) - 1;
