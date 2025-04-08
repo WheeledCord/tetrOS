@@ -127,7 +127,8 @@ void kmain(void) {
                     fallingBlock.x++;
             }
         }
-        if (timer_ticks - lastFallTick >= 30) {
+        if (timer_ticks 
+            - lastFallTick >= 30) {
             lastFallTick = timer_ticks;
             int newY = fallingBlock.y + 1;
             if (newY >= GRID_ROWS || grid[newY][fallingBlock.x] != EMPTY_CELL) {
@@ -140,3 +141,4 @@ void kmain(void) {
         draw_grid();
     }
 }
+
