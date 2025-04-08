@@ -12,7 +12,7 @@
 #define TIMER_FREQUENCY  100
 #define IRQ_TIMER_VECTOR (IRQ_BASE + IRQ0_TIMER)
 #define GRID_COLS        10
-#define GRID_ROWS        20
+#define GRID_ROWS         20
 #define CELL_WIDTH         2
 #define GRID_X_OFFSET     10
 #define GRID_Y_OFFSET      5
@@ -76,11 +76,15 @@ void spawn_new_block(void) {
 void draw_cell(int row, int col, int filled) {
     int screen_x = GRID_X_OFFSET + col * CELL_WIDTH;
     int screen_y = GRID_Y_OFFSET + row;
-    console_gotoxy(screen_x, screen_y);
-    if (filled)
-        console_putstr("[]");
-    else
-        console_putstr(" .");
+    uint16 *vga = (uint16*)VGA_ADDRESS;
+    int index = screen_y * VGA_WIDTH + screen_x;
+    if (filled) {
+        vga[index] = vga_item_entry('[', COLOR_WHITE, COLOR_BLACK);
+        vga[index+1] = vga_item_entry(']', COLOR_WHITE, COLOR_BLACK);
+    } else {
+        vga[index] = vga_item_entry(' ', COLOR_WHITE, COLOR_BLACK);
+        vga[index+1] = vga_item_entry('.', COLOR_WHITE, COLOR_BLACK);
+    }
 }
 
 void draw_grid(void) {
@@ -104,6 +108,7 @@ void kmain(void) {
     pic8259_init();
     timer_init();
     isr_register_interrupt_handler(IRQ_TIMER_VECTOR, timer_handler);
+    vga_disable_cursor();
     console_clear(COLOR_WHITE, COLOR_BLACK);
     int r, c;
     for (r = 0; r < GRID_ROWS; r++)
