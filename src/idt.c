@@ -1,7 +1,3 @@
-/**
- * Interrupt Descriptor Table(GDT) setup
- */
-
 #include "idt.h"
 #include "isr.h"
 #include "8259_pic.h"
@@ -9,9 +5,7 @@
 IDT g_idt[NO_IDT_DESCRIPTORS];
 IDT_PTR g_idt_ptr;
 
-/**
- * fill entries of IDT 
- */
+//fill all entries
 void idt_set_entry(int index, uint32 base, uint16 seg_sel, uint8 flags) {
     IDT *this = &g_idt[index];
 
