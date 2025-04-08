@@ -11,9 +11,22 @@
 #define PIT_FREQUENCY    1193182
 #define TIMER_FREQUENCY  100
 #define IRQ_TIMER_VECTOR (IRQ_BASE + IRQ0_TIMER)
+#define GRID_COLS        10
+#define GRID_ROWS        20
+#define CELL_WIDTH         2
+#define GRID_X_OFFSET     10
+#define GRID_Y_OFFSET      5
+#define EMPTY_CELL       255
 
 volatile uint32 timer_ticks = 0;
 volatile uint32 seconds_elapsed = 0;
+uint8 grid[GRID_ROWS][GRID_COLS];
+typedef struct {
+    int x;
+    int y;
+} Block;
+Block fallingBlock;
+uint32 lastFallTick = 0;
 
 void update_timer_display(const char* sec_str) {
     char timerStr[32];
@@ -55,7 +68,35 @@ void timer_init(void) {
     outportb(0x40, (uint8)((divisor >> 8) & 0xFF));
 }
 
+void spawn_new_block(void) {
+    fallingBlock.x = GRID_COLS / 2;
+    fallingBlock.y = 0;
+}
+
+void draw_cell(int row, int col, int filled) {
+    int screen_x = GRID_X_OFFSET + col * CELL_WIDTH;
+    int screen_y = GRID_Y_OFFSET + row;
+    console_gotoxy(screen_x, screen_y);
+    if (filled)
+        console_putstr("[]");
+    else
+        console_putstr(" .");
+}
+
+void draw_grid(void) {
+    int r, c;
+    for (r = 0; r < GRID_ROWS; r++) {
+        for (c = 0; c < GRID_COLS; c++) {
+            int cellFilled = (grid[r][c] != EMPTY_CELL);
+            if (r == fallingBlock.y && c == fallingBlock.x)
+                cellFilled = 1;
+            draw_cell(r, c, cellFilled);
+        }
+    }
+}
+
 void kmain(void) {
+    int sc;
     gdt_init();
     idt_init();
     console_init(COLOR_WHITE, COLOR_BLACK);
@@ -64,15 +105,33 @@ void kmain(void) {
     timer_init();
     isr_register_interrupt_handler(IRQ_TIMER_VECTOR, timer_handler);
     console_clear(COLOR_WHITE, COLOR_BLACK);
-    console_gotoxy(0, 2);
-    console_putstr("Simple Text Editor\n");
-    console_putstr("Type below; use Backspace to delete.\n");
+    int r, c;
+    for (r = 0; r < GRID_ROWS; r++)
+        for (c = 0; c < GRID_COLS; c++)
+            grid[r][c] = EMPTY_CELL;
+    spawn_new_block();
+    lastFallTick = timer_ticks;
     while (1) {
-        char c = kb_getchar();
-        if (c == '\b') {
-            console_ungetchar();
-        } else {
-            console_putchar(c);
+        sc = kb_poll_scancode();
+        if (sc != 0) {
+            if (sc == 0x4B) {
+                if (fallingBlock.x > 0 && grid[fallingBlock.y][fallingBlock.x - 1] == EMPTY_CELL)
+                    fallingBlock.x--;
+            } else if (sc == 0x4D) {
+                if (fallingBlock.x < GRID_COLS - 1 && grid[fallingBlock.y][fallingBlock.x + 1] == EMPTY_CELL)
+                    fallingBlock.x++;
+            }
         }
+        if (timer_ticks - lastFallTick >= 30) {
+            lastFallTick = timer_ticks;
+            int newY = fallingBlock.y + 1;
+            if (newY >= GRID_ROWS || grid[newY][fallingBlock.x] != EMPTY_CELL) {
+                grid[fallingBlock.y][fallingBlock.x] = 1;
+                spawn_new_block();
+            } else {
+                fallingBlock.y = newY;
+            }
+        }
+        draw_grid();
     }
 }

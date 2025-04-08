@@ -11,7 +11,6 @@ static BOOL g_caps_lock = FALSE;
 static BOOL g_shift_pressed = FALSE;
 char g_ch = 0, g_scan_code = 0;
 
-//see scan codes defined in keyboard.h for index
 char g_scan_code_chars[128] = {
     0, 27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
     '\t', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',
@@ -21,15 +20,11 @@ char g_scan_code_chars[128] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-
 static int get_scancode() {
     int i, scancode = 0;
-
-    //get scancode until status is on(key pressed)
-    for (i = 1000; i > 0; i++) {
-        //check if scan code is ready
-        if ((inportb(KEYBOARD_STATUS_PORT) & 1) == 0) continue;
-        //get the scan code
+    for (i = 1000; i > 0; i--) {
+        if ((inportb(KEYBOARD_STATUS_PORT) & 1) == 0)
+            continue;
         scancode = inportb(KEYBOARD_DATA_PORT);
         break;
     }
@@ -67,41 +62,29 @@ char alternate_chars(char ch) {
 
 void keyboard_handler(REGISTERS *r) {
     int scancode;
-
     g_ch = 0;
     scancode = get_scancode();
     g_scan_code = scancode;
     if (scancode & 0x80) {
-        //key release
+        // key release
     } else {
-        //key down
         switch(scancode) {
             case SCAN_CODE_KEY_CAPS_LOCK:
-                if (g_caps_lock == FALSE)
-                    g_caps_lock = TRUE;
-                else
-                    g_caps_lock = FALSE;
+                g_caps_lock = !g_caps_lock;
                 break;
-
             case SCAN_CODE_KEY_ENTER:
                 g_ch = '\n';
                 break;
-
             case SCAN_CODE_KEY_TAB:
                 g_ch = '\t';
                 break;
-
             case SCAN_CODE_KEY_LEFT_SHIFT:
                 g_shift_pressed = TRUE;
                 break;
-
             default:
                 g_ch = g_scan_code_chars[scancode];
-                //if caps in on, covert to upper
                 if (g_caps_lock) {
-                    //if shift is pressed before
                     if (g_shift_pressed) {
-                        //replace alternate chars
                         g_ch = alternate_chars(g_ch);
                     } else
                         g_ch = upper(g_ch);
@@ -110,8 +93,7 @@ void keyboard_handler(REGISTERS *r) {
                         if (isalpha(g_ch))
                             g_ch = upper(g_ch);
                         else 
-                            //replace alternate chars
-                        g_ch = alternate_chars(g_ch);
+                            g_ch = alternate_chars(g_ch);
                     } else
                         g_ch = g_scan_code_chars[scancode];
                     g_shift_pressed = FALSE;
@@ -125,10 +107,8 @@ void keyboard_init() {
     isr_register_interrupt_handler(IRQ_BASE + 1, keyboard_handler);
 }
 
-//a blocking character read
 char kb_getchar() {
     char c;
-
     while(g_ch <= 0);
     c = g_ch;
     g_ch = 0;
@@ -138,7 +118,6 @@ char kb_getchar() {
 
 char kb_get_scancode() {
     char code;
-
     while(g_scan_code <= 0);
     code = g_scan_code;
     g_ch = 0;
@@ -146,4 +125,12 @@ char kb_get_scancode() {
     return code;
 }
 
-
+char kb_poll_scancode() {
+    char code = 0;
+    if(g_scan_code > 0) {
+        code = g_scan_code;
+        g_ch = 0;
+        g_scan_code = 0;
+    }
+    return code;
+}

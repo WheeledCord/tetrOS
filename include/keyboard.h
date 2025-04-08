@@ -101,5 +101,6 @@ char kb_getchar();
 
 //a blocking scan code read
 char kb_get_scancode();
+char kb_poll_scancode();
 
 #endif
