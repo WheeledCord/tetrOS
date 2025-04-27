@@ -7,6 +7,7 @@
 #include "8259_pic.h"
 #include "io_ports.h"
 #include "isr.h"
+#include <stdint.h>
 
 #define PIT_FREQUENCY      1193182
 #define TIMER_FREQUENCY    100
@@ -82,24 +83,91 @@ static const VGA_COLOR_TYPE tetrominoColors[NUM_TETROMINOS] = {
     COLOR_BROWN
 };
 
-int ram_rand(void){
-    volatile uint8* vga=(volatile uint8*)0xB8000;int entropy=0;int t=timer_ticks;
-    for(int i=0;i<160;i+=7){uint8 v=vga[i];uint8 m=((v^i)+(t>>(i%5)))*(i+3);vga[i]=v^m;entropy^=((m<<(i%3))|(m>>(8-(i%3))));}
-    for(int i=0;i<10;i++){int pos=(entropy>>(i*2))%(80*25*2);vga[pos]^=(entropy>>(i%8));entropy+=((vga[pos]*i)^(pos+t));}
-    for(int i=0;i<20;i++){int pos=(entropy>>(i%7))%(80*25*2);vga[pos]=(vga[pos]+(entropy>>((i+3)%8)))^i;entropy^=((vga[pos]<<(i%5))|(vga[pos]>>(8-(i%5))));}
-    int* ram=(int*)0x0000;for(int i=0;i<0x8000;i+=4){ram[i/4]^=(entropy^t^i);ram[i/4]+=entropy*((i%13)+1);}
-    uint8* bios=(uint8*)0xF0000;for(int i=0;i<128;i++){bios[i]^=((entropy>>(i%8))+(i*17));bios[i]+=entropy^(i*3);}
-    for(int i=0;i<64;i++){uint8* idt=(uint8*)(0x00000000+(i*8));*idt^=(entropy^(t>>i));*(idt+4)^=(entropy>>((i%5)+2));}
-    for(int i=0;i<128;i++){int* ptr=(int*)((entropy+i*23)%0x30000);*ptr^=(entropy^(t>>i));*ptr+=(i*entropy)^(~t);}
-    for(int i=0;i<16;i++){uint8* magic=(uint8*)(0xC0000+(i*16));*magic^=((entropy>>(i*3))+(t*i));*magic+=((~entropy)^(i*13));}
-    for(int i=0;i<16;i++){unsigned short port=(unsigned short)(0x1F0+(i*3));unsigned char data=(unsigned char)((entropy>>(i%5))&0xFF);outportb(port,data);}
-    for(int i=0;i<8;i++){unsigned short port=(unsigned short)(0x3C0+(i*7));unsigned char data=(unsigned char)((entropy>>(i%3))&0xFF);outportb(port,data);}
-    for(int i=0;i<32;i++){unsigned short port=(unsigned short)(0x170+(i*2));unsigned char data=(unsigned char)((entropy^(t>>i))&0xFF);outportb(port,data);}
-    if((entropy%17)==0){int m=((entropy%7)-3);if(!m)m=1;switch(entropy%3){case 0:level*=m;break;case 1:score*=m;break;default:timer_ticks*=m;}}
-    entropy^=(t*2654435761);entropy=((entropy>>13)^(entropy<<7))^0xA5A5A5A5;entropy=((entropy*7)+(entropy>>3))^(entropy<<5);
-    entropy+=(entropy^0xDEADBEEF)-((entropy>>2)+(entropy<<3));if(entropy<0)entropy=-entropy;return entropy%NUM_TETROMINOS;
+static uint8_t cmos_read(uint8_t reg) {
+    outportb(0x70, (reg & 0x7F));
+    return inportb(0x71);
+}
+
+static void cmos_wait_update(void) {
+    while (cmos_read(0x0A) & 0x80) { }
+}
+
+static uint32_t get_random_entropy(void) {
+    uint32_t entropy = 0;
+
+    cmos_wait_update();
+    uint8_t sec  = cmos_read(0x00);
+    uint8_t min  = cmos_read(0x02);
+    uint8_t hour = cmos_read(0x04);
+    uint8_t day  = cmos_read(0x07);
+    uint8_t mon  = cmos_read(0x08);
+    uint8_t year = cmos_read(0x09);
+
+    entropy ^= ((uint32_t)sec << 0)  | ((uint32_t)min << 8)
+             | ((uint32_t)hour << 16) | ((uint32_t)day << 24);
+    entropy ^= ((uint32_t)mon << 0)  | ((uint32_t)year << 8);
+
+    entropy ^= timer_ticks;
+
+    volatile uint8_t* vga = (volatile uint8_t*)0xB8000;
+    for (int i = 0; i < 16; i++) {
+        entropy ^= vga[i] << (i % 8);
     }
-    
+
+    uint8_t* ram = (uint8_t*)0x0000;
+    for (int i = 0; i < 32; i++) {
+        entropy ^= ram[i] << (i % 8);
+    }
+
+    uint32_t tsc;
+    asm volatile ("rdtsc" : "=A" (tsc));
+    entropy ^= tsc;
+
+    entropy ^= inportb(0x60);
+    entropy ^= inportb(0x64);
+    entropy ^= inportb(0x80);
+
+    entropy ^= (entropy << 21);
+    entropy ^= (entropy >> 35);
+    entropy ^= (entropy << 4);
+
+    return entropy;
+}
+
+int ram_rand(void) {
+    static uint32_t state = 0;
+    static int init = 0;
+
+    if (!init) {
+        state = get_random_entropy();
+        if (state == 0) state = 0xDEADBEEF;
+        init = 1;
+    }
+
+    state ^= (state << 13);
+    state ^= (state >> 17);
+    state ^= (state << 5);
+
+    return (int)(state % NUM_TETROMINOS);
+}
+
+// int ram_rand(void){
+//     volatile uint8* vga=(volatile uint8*)0xB8000;int entropy=0;int t=timer_ticks;
+//     for(int i=0;i<160;i+=7){uint8 v=vga[i];uint8 m=((v^i)+(t>>(i%5)))*(i+3);vga[i]=v^m;entropy^=((m<<(i%3))|(m>>(8-(i%3))));}
+//     for(int i=0;i<10;i++){int pos=(entropy>>(i*2))%(80*25*2);vga[pos]^=(entropy>>(i%8));entropy+=((vga[pos]*i)^(pos+t));}
+//     for(int i=0;i<20;i++){int pos=(entropy>>(i%7))%(80*25*2);vga[pos]=(vga[pos]+(entropy>>((i+3)%8)))^i;entropy^=((vga[pos]<<(i%5))|(vga[pos]>>(8-(i%5))));}
+//     int* ram=(int*)0x0000;for(int i=0;i<0x8000;i+=4){ram[i/4]^=(entropy^t^i);ram[i/4]+=entropy*((i%13)+1);}
+//     uint8* bios=(uint8*)0xF0000;for(int i=0;i<128;i++){bios[i]^=((entropy>>(i%8))+(i*17));bios[i]+=entropy^(i*3);}
+//     for(int i=0;i<64;i++){uint8* idt=(uint8*)(0x00000000+(i*8));*idt^=(entropy^(t>>i));*(idt+4)^=(entropy>>((i%5)+2));}
+//     for(int i=0;i<128;i++){int* ptr=(int*)((entropy+i*23)%0x30000);*ptr^=(entropy^(t>>i));*ptr+=(i*entropy)^(~t);}
+//     for(int i=0;i<16;i++){uint8* magic=(uint8*)(0xC0000+(i*16));*magic^=((entropy>>(i*3))+(t*i));*magic+=((~entropy)^(i*13));}
+//     for(int i=0;i<16;i++){unsigned short port=(unsigned short)(0x1F0+(i*3));unsigned char data=(unsigned char)((entropy>>(i%5))&0xFF);outportb(port,data);}
+//     for(int i=0;i<8;i++){unsigned short port=(unsigned short)(0x3C0+(i*7));unsigned char data=(unsigned char)((entropy>>(i%3))&0xFF);outportb(port,data);}
+//     for(int i=0;i<32;i++){unsigned short port=(unsigned short)(0x170+(i*2));unsigned char data=(unsigned char)((entropy^(t>>i))&0xFF);outportb(port,data);}
+//     if((entropy%17)==0){int m=((entropy%7)-3);if(!m)m=1;switch(entropy%3){case 0:level*=m;break;case 1:score*=m;break;default:timer_ticks*=m;}}
+//     entropy^=(t*2654435761);entropy=((entropy>>13)^(entropy<<7))^0xA5A5A5A5;entropy=((entropy*7)+(entropy>>3))^(entropy<<5);
+//     entropy+=(entropy^0xDEADBEEF)-((entropy>>2)+(entropy<<3));if(entropy<0)entropy=-entropy;return entropy%NUM_TETROMINOS;
+//     }
 
 int can_place(Tetromino *piece, int newX, int newY, int newRot) {
     int r, c;
