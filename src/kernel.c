@@ -169,6 +169,39 @@ int ram_rand(void) {
 //     entropy+=(entropy^0xDEADBEEF)-((entropy>>2)+(entropy<<3));if(entropy<0)entropy=-entropy;return entropy%NUM_TETROMINOS;
 //     }
 
+int bag[NUM_TETROMINOS] = [-1,-1,-1,-1,-1,-1,-1];
+
+int from_bag(void) {
+    BOOL bag_empty = TRUE;
+    for (int i = 0; i < NUM_TETROMINOS; i++) {
+        if (bag[i] != -1) {
+            bag_empty = FALSE;
+            break;
+        }
+    }
+    if (bag_empty) {
+        int i = 0;
+        while (i < NUM_TETROMINOS-1) {
+            int rand = ram_rand();
+            BOOL not_in_bag = TRUE;
+            for (int ii = 0; ii < NUM_TETROMINOS; ii++) {
+                if (bag[ii] == rand) {
+                    not_in_bag = FALSE;
+                    break;
+                }
+            }
+            if (not_in_bag) {
+                bag[i++] = rand;
+            }
+        }
+    }
+    for (int i = 0; i < NUM_TETROMINOS; i++) {
+        if (bag[i] != -1) {
+            return bag[i];
+        }
+    }    
+}
+
 int can_place(Tetromino *piece, int newX, int newY, int newRot) {
     int r, c;
     for (r = 0; r < 4; r++) {
@@ -222,7 +255,7 @@ int clear_lines(void) {
 }
 
 void spawn_new_piece(void) {
-    fallingPiece.shape = ram_rand();
+    fallingPiece.shape = from_bag();
     fallingPiece.rotation = 0;
     fallingPiece.x = (GRID_COLS / 2) - 2;
     fallingPiece.y = 0;

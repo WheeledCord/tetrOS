@@ -15,6 +15,8 @@ extern uint8 __kernel_rodata_section_end;
 extern uint8 __kernel_bss_section_start;
 extern uint8 __kernel_bss_section_end;
 
+int from_bag(void);
+
 #endif
 
 
