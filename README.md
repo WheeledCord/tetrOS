@@ -1,5 +1,10 @@
 ## how 2 use <br/>
 
+**dependancies**
+```
+xorriso mtools gcc grub
+```
+
 **compile:**
 ```
 cd tetrOS
