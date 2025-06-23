@@ -169,7 +169,7 @@ int ram_rand(void) {
 //     entropy+=(entropy^0xDEADBEEF)-((entropy>>2)+(entropy<<3));if(entropy<0)entropy=-entropy;return entropy%NUM_TETROMINOS;
 //     }
 
-int bag[NUM_TETROMINOS] = [-1,-1,-1,-1,-1,-1,-1];
+int bag[NUM_TETROMINOS] = { -1, -1, -1, -1, -1, -1, -1 };
 
 int from_bag(void) {
     BOOL bag_empty = TRUE;
@@ -181,7 +181,7 @@ int from_bag(void) {
     }
     if (bag_empty) {
         int i = 0;
-        while (i < NUM_TETROMINOS-1) {
+        while (i < NUM_TETROMINOS) {
             int rand = ram_rand();
             BOOL not_in_bag = TRUE;
             for (int ii = 0; ii < NUM_TETROMINOS; ii++) {
@@ -197,9 +197,11 @@ int from_bag(void) {
     }
     for (int i = 0; i < NUM_TETROMINOS; i++) {
         if (bag[i] != -1) {
-            return bag[i];
+            int shape = bag[i];
+            bag[i] = -1;
+            return shape;
         }
-    }    
+    }
 }
 
 int can_place(Tetromino *piece, int newX, int newY, int newRot) {
@@ -219,6 +221,7 @@ int can_place(Tetromino *piece, int newX, int newY, int newRot) {
     }
     return 1;
 }
+
 
 void merge_piece(Tetromino *piece) {
     int r, c;
@@ -260,6 +263,7 @@ void spawn_new_piece(void) {
     fallingPiece.x = (GRID_COLS / 2) - 2;
     fallingPiece.y = 0;
     fallingPiece.tspin = 0;
+
     if (!can_place(&fallingPiece, fallingPiece.x, fallingPiece.y, fallingPiece.rotation)) {
         int r, c;
         for (r = 0; r < GRID_ROWS; r++)
@@ -270,6 +274,19 @@ void spawn_new_piece(void) {
         totalLinesCleared = 0;
         combo = 0;
         lastClearWasDifficult = 0;
+
+        // PC speaker beep at 440Hz using PIT channel 2
+        uint8_t tmp = inportb(0x61);
+
+        outportb(0x43, 0xB6);       // Set PIT channel 2: binary, mode 3 (square wave), LSB then MSB
+        outportb(0x42, 0x97);       // LSB of 0x0A97 (440 Hz)
+        outportb(0x42, 0x0A);       // MSB
+
+        outportb(0x61, tmp | 0x03); // Enable speaker (set bits 0 and 1)
+
+        for (volatile int i = 0; i < 10000000; i++); // Roughly ~150 ms delay
+
+        outportb(0x61, tmp & ~0x03); // Disable speaker (clear bits 0 and 1)
     }
 }
 
