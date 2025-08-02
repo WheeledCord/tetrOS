@@ -23,4 +23,3 @@ qemu-system-i386 out/IDT.iso
 ```
 make clean
 ```
-A
